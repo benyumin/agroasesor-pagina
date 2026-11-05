@@ -14,6 +14,7 @@ services:
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-cambia-esta-clave-solo-para-desarrollo}
       DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-127.0.0.1,localhost}
       DJANGO_DB_PATH: /data/db.sqlite3
+      DATABASE_URL: ${DATABASE_URL:?Falta DATABASE_URL en el archivo .env}
       DJANGO_BACKUP_DIR: /backups
       # Correo (recuperar contraseña). Los valores reales van en .env; sin .env sale por la consola.
       EMAIL_BACKEND: ${EMAIL_BACKEND:-django.core.mail.backends.console.EmailBackend}
