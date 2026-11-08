@@ -590,23 +590,8 @@
 }
 
 .sowing-empty-card {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    padding: 34px 18px;
-    text-align: center;
+    padding: 14px 18px;
     color: var(--muted);
-}
-
-.sowing-empty-card i {
-    width: 36px;
-    height: 36px;
-    color: var(--green-light);
-}
-
-.sowing-empty-card p {
-    margin: 0;
 }
 
 @media (max-width: 1180px) {
@@ -1310,4 +1295,26 @@
 
 .sowing-farm .empty-state {
     border-top: 1px solid var(--line);
+}
+
+/* ---------- Pulido de diseño: Calendario ---------- */
+.page-hero .page-sub {
+    max-width: none;
+}
+
+.sowing-head h2 {
+    margin: 0;
+}
+
+/* Una sola acción sólida por pantalla (la del recuadro «Siguiente paso»); en cada potrero va contorneada */
+.sowing-plot .sp-side>.btn-primary-agro {
+    background: #fff;
+    color: var(--green-dark);
+    border: 1px solid #b9cdb4;
+    box-shadow: none;
+}
+
+.sowing-plot .sp-side>.btn-primary-agro:hover {
+    background: var(--green-soft);
+    border-color: var(--green);
 }

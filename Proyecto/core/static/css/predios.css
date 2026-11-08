@@ -1771,44 +1771,76 @@ dialog::backdrop {
     height: 22px;
 }
 
-/* ¿Cómo utilizas este predio? */
+/* ¿Cómo deseas organizar tu predio? · un solo bloque compacto: texto a la izquierda, dos opciones a la derecha */
 .use-card {
-    margin-bottom: 16px;
-    padding: 18px;
+    display: grid;
+    grid-template-columns: minmax(210px, .8fr) minmax(0, 2fr);
+    gap: 12px 24px;
+    align-items: center;
+    margin-bottom: 14px;
+    padding: 14px 18px;
     border-color: #cfe3c7;
     background: linear-gradient(100deg, #f1f8ee, #fff 85%);
 }
 
-.use-head {
-    display: flex;
-    align-items: flex-start;
-    gap: 14px;
+.use-copy {
+    display: grid;
+    justify-items: start;
+    gap: 4px;
+    min-width: 0;
 }
 
-.use-head strong {
-    display: block;
+.use-title {
+    margin: 0;
     color: var(--green-dark);
-    font-size: 1.08rem;
+    font-size: 1.18rem;
+    line-height: 1.25;
 }
 
-.use-head p {
-    margin: 4px 0 0;
+.use-copy p {
+    margin: 0;
     color: var(--muted);
-    font-size: .92rem;
+    font-size: .88rem;
+    line-height: 1.4;
+}
+
+.use-later {
+    display: inline-flex;
+    align-items: center;
+    min-height: 36px;
+    margin: 0 0 -6px -8px;
+    padding: 4px 8px;
+    border-radius: 10px;
+    color: var(--muted);
+    font-size: .88rem;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.use-later:hover {
+    background: var(--green-soft);
+    color: var(--green-dark);
 }
 
 .use-options {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 12px;
-    margin-top: 14px;
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+    gap: 10px;
+    min-width: 0;
+}
+
+/* Con una sola opción (predio sin perímetro) ocupa todo el ancho disponible */
+.use-options:has(> .use-option:only-child) {
+    grid-template-columns: minmax(0, 1fr);
 }
 
 .use-option {
-    display: grid;
-    align-content: start;
-    gap: 8px;
-    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+    padding: 12px 14px;
     border: 1px solid var(--line);
     border-radius: 12px;
     background: #fff;
@@ -1824,65 +1856,115 @@ dialog::backdrop {
 }
 
 .use-option h3 svg {
-    width: 19px;
-    height: 19px;
+    width: 18px;
+    height: 18px;
 }
 
 .use-option p {
     margin: 0;
     color: var(--muted);
-    font-size: .88rem;
+    font-size: .85rem;
+    line-height: 1.35;
 }
 
-.use-option form {
-    display: grid;
+.use-form {
+    display: flex;
+    flex-wrap: wrap;
     gap: 8px;
+    align-items: flex-end;
+    margin-top: auto;
 }
 
-.use-option .button {
+.use-field {
+    flex: 1 1 160px;
+    margin: 0;
+    gap: 3px;
+}
+
+.use-form button {
+    flex: 1 1 auto;
+}
+
+.use-field span {
+    color: var(--muted);
+    font-size: .78rem;
+}
+
+.use-option .btn-primary-agro,
+.use-option .btn-secondary-agro {
     justify-content: center;
+    min-height: 44px;
+    white-space: nowrap;
+}
+
+.use-option>a.btn-primary-agro,
+.use-option>a.btn-secondary-agro {
     width: 100%;
+    margin-top: auto;
 }
 
-.use-option .field {
-    margin: 0;
+@media (max-width: 1100px) {
+    .use-card {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .use-later {
+        margin-bottom: 0;
+    }
 }
 
-.use-help {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 8px 16px;
-    margin: 14px 0 0;
-    color: var(--muted);
-    font-size: .8rem;
+@media (max-width: 760px) {
+    .use-options {
+        grid-template-columns: minmax(0, 1fr);
+    }
 }
 
-.use-help dt {
-    display: inline;
-    color: var(--green-dark);
-    font-weight: 800;
-}
+@media (max-width: 640px) {
+    .use-card {
+        gap: 8px;
+        padding: 12px;
+    }
 
-.use-help dt::after {
-    content: ': ';
-}
+    .use-title {
+        font-size: 1.08rem;
+    }
 
-.use-help dd {
-    display: inline;
-    margin: 0;
-}
+    .use-copy p {
+        font-size: .84rem;
+    }
 
-.use-later {
-    display: inline-block;
-    margin-top: 12px;
-    color: var(--muted);
-    font-size: .88rem;
-    text-decoration: underline;
-}
+    .use-options {
+        gap: 8px;
+    }
 
-.inline-use-form {
-    display: inline-block;
-    margin-left: 8px;
+    .use-option {
+        gap: 4px;
+        padding: 10px 12px;
+    }
+
+    .use-option p {
+        font-size: .82rem;
+    }
+
+    .use-option .btn-primary-agro,
+    .use-option .btn-secondary-agro {
+        width: 100%;
+    }
+
+    .use-later {
+        min-height: 32px;
+    }
+
+    /* La acción principal de la ficha y el menú «⋯» comparten fila en vez de apilarse */
+    .detail-head-actions {
+        width: 100%;
+    }
+
+    .detail-head-actions .btn-primary-agro,
+    .detail-head-actions .btn-secondary-agro {
+        flex: 1 1 140px;
+        width: auto;
+    }
 }
 
 /* ── Registro de predio: pantalla ordenada (herramientas agrupadas, ayuda en acordeón, avisos discretos) ── */
@@ -2099,29 +2181,6 @@ dialog::backdrop {
     margin-right: 2px;
 }
 
-.use-option .btn-primary-agro,
-.use-option .btn-secondary-agro {
-    width: 100%;
-}
-
-.use-later {
-    display: inline-flex;
-    align-items: center;
-    min-height: 34px;
-    padding: 4px 8px;
-    margin-top: 8px;
-    border-radius: 10px;
-    color: var(--muted);
-    font-size: .88rem;
-    font-weight: 600;
-    text-decoration: none;
-}
-
-.use-later:hover {
-    background: var(--green-soft);
-    color: var(--green-dark);
-}
-
 .detail-head-actions {
     display: flex;
     flex-wrap: wrap;
@@ -2129,31 +2188,6 @@ dialog::backdrop {
     gap: 8px;
 }
 
-.detail-empty-state .inline-use-form {
-    display: block;
-    margin: 6px 0 0;
-}
-
-@media (max-width: 640px) {
-
-    .detail-head-actions .btn-primary-agro,
-    .detail-head-actions .btn-secondary-agro {
-        width: 100%;
-    }
-}
-
-.use-confirm {
-    display: block;
-    color: var(--green);
-    font-size: .86rem;
-    font-weight: 800;
-}
-
-.use-title {
-    margin: 2px 0 0;
-    color: var(--green-dark);
-    font-size: 1.25rem;
-}
 
 .confirmation-actions .btn-primary-agro,
 .confirmation-actions .btn-secondary-agro {
@@ -3188,4 +3222,1122 @@ dialog::backdrop {
 
 .link-btn:hover {
     color: var(--green);
+}
+
+/* ---------- Pulido de diseño: Ficha de predio ---------- */
+.predio-detail-layout .detail-map-card {
+    position: sticky;
+    top: 88px;
+    display: flex;
+    flex-direction: column;
+    min-height: 440px;
+}
+
+.detail-map-card .detail-empty-state {
+    flex: 1;
+    justify-items: center;
+    align-content: center;
+    padding: 28px 24px;
+    text-align: center;
+}
+
+.detail-map-card .detail-empty-state svg {
+    width: 34px;
+    height: 34px;
+}
+
+.detail-map-card .detail-empty-state p {
+    max-width: 38ch;
+}
+
+@media (max-width: 900px) {
+    .predio-detail-layout .detail-map-card {
+        position: static;
+        min-height: 0;
+    }
+}
+
+/* ---------- Pulido de diseño: Mis predios ---------- */
+.farm-picker-list.entity-grid[data-view="cards"],
+.farm-picker-list.entity-grid[data-view="list"] {
+    display: grid;
+    overflow: visible;
+    padding: 2px;
+}
+
+.farm-picker-list.entity-grid[data-view="cards"] {
+    grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+}
+
+.farm-picker-list.entity-grid>.farm-card {
+    min-width: 0;
+}
+
+.farm-picker-list[data-view="list"] .entity-card-select {
+    grid-template-columns: minmax(190px, 1.1fr) minmax(170px, 1fr) minmax(300px, auto);
+}
+
+.farm-picker-list[data-view="list"] .meta-row {
+    justify-content: flex-end;
+}
+
+.farm-picker-list.entity-grid[data-view="cards"]>.farm-card:only-child {
+    max-width: 560px;
+}
+
+#farm-picker-title,
+#potrero-history-title {
+    text-transform: lowercase;
+    letter-spacing: 0;
+}
+
+#farm-picker-title::first-letter,
+#potrero-history-title::first-letter {
+    text-transform: uppercase;
+}
+
+#farm-picker-title {
+    font-size: 1.2rem;
+}
+
+.terrain-panel-head h3 {
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+.terrain-workspace .map-card {
+    position: sticky;
+    top: 88px;
+}
+
+.overview-plot {
+    display: grid;
+    grid-template-columns: 14px minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 12px;
+}
+
+.overview-status {
+    max-width: 9.5rem;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.25;
+    border-radius: 10px;
+    padding: 4px 10px;
+}
+
+@media (max-width: 1099px) {
+    .terrain-workspace .map-card {
+        position: static;
+    }
+}
+
+/* ───────── Potrero: datos a la izquierda, mapa y superficie a la derecha ─────────
+   Izquierda: una sola tarjeta (el potrero y su predio arriba · nombre y cultivo · detalles opcionales · ubicación exacta · Guardar).
+   Derecha: herramientas → mapa → un único bloque de superficie.
+   Solo reordena y viste lo que ya existía; el <form> envuelve todo, así que la superficie y Guardar se envían juntos.
+   Todo va acotado a .potrero-form / .is-potrero-heading: el registro de predio no cambia. */
+
+/* Encabezado: solo el título; el potrero y su predio se identifican dentro de la tarjeta de datos */
+.terrain-page-heading.is-potrero-heading {
+    margin-bottom: 12px;
+}
+
+.terrain-page-heading.is-potrero-heading .page-title {
+    margin: 0;
+    font-size: clamp(1.55rem, 2.2vw, 1.9rem);
+}
+
+/* Rejilla: una columna en móvil y tablet (qué plantar → dónde queda → guardar) */
+#terrain-form.potrero-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+    align-items: start;
+    max-width: none;
+}
+
+#terrain-form.potrero-form>* {
+    order: 0;
+    min-width: 0;
+}
+
+.potrero-form .potrero-plant-card,
+.potrero-form .potrero-where-card,
+.potrero-form .potrero-footer {
+    box-shadow: 0 1px 3px rgba(30, 61, 40, .06);
+}
+
+/* ── Izquierda: tarjeta de datos ── */
+.potrero-form .potrero-plant-card {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden;
+}
+
+.potrero-identity {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    color: #fff;
+    background: linear-gradient(135deg, var(--green-dark) 0%, var(--green) 100%);
+}
+
+.potrero-identity-icon {
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, .16);
+}
+
+.potrero-identity-icon svg {
+    width: 22px;
+    height: 22px;
+    color: #fff;
+}
+
+.potrero-identity-text {
+    min-width: 0;
+}
+
+.potrero-identity-name {
+    display: block;
+    font-size: 1.2rem;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+}
+
+.potrero-identity-parent {
+    margin: 3px 0 0;
+    font-size: .88rem;
+    line-height: 1.35;
+    color: rgba(255, 255, 255, .86);
+}
+
+.potrero-identity-parent strong {
+    color: #fff;
+}
+
+.potrero-form .potrero-body {
+    flex: 1 1 auto;
+    padding: 16px 18px 6px;
+}
+
+.potrero-form .form-card-heading.is-simple,
+.potrero-form .map-card-heading.is-simple {
+    margin-bottom: 8px;
+}
+
+.potrero-form .form-card-heading.is-simple h2,
+.potrero-form .map-card-heading.is-simple h2 {
+    margin: 0;
+    font-size: 1.08rem;
+    color: var(--green-dark);
+}
+
+.potrero-form .map-card-heading.is-simple h2 small {
+    color: var(--muted);
+    font-size: .85rem;
+    font-weight: 600;
+}
+
+.potrero-form .potrero-fields {
+    gap: 0;
+}
+
+/* Los campos se estilan con #terrain-form delante: las reglas generales del formulario (#terrain-form .field …) tienen id */
+#terrain-form.potrero-form .field {
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+#terrain-form.potrero-form .field>span {
+    font-size: .92rem;
+}
+
+#terrain-form.potrero-form .field input:not([type="checkbox"]),
+#terrain-form.potrero-form .field select {
+    min-height: 48px;
+    font-size: 1rem;
+}
+
+/* Nombre y Cultivo son lo principal: más grandes que el resto de los campos */
+#terrain-form.potrero-form .potrero-fields>.field {
+    margin-bottom: 16px;
+}
+
+#terrain-form.potrero-form .potrero-fields>.field>span {
+    font-size: 1rem;
+    font-weight: 800;
+}
+
+#terrain-form.potrero-form #id_nombre,
+#terrain-form.potrero-form #id_cultivo {
+    min-height: 56px;
+    font-size: 1.1rem;
+}
+
+#terrain-form.potrero-form #id_nombre {
+    font-weight: 700;
+}
+
+/* «Agregar más detalles» y «Ubicación exacta»: filas plegables, no campos sueltos */
+.potrero-form .more-details {
+    margin: 0 0 12px;
+    border: 1px dashed #c3d4bf;
+    border-radius: 12px;
+    background: #fafcf8;
+}
+
+.potrero-form .more-details>summary {
+    display: flex;
+    align-items: center;
+    box-sizing: border-box;
+    min-height: 44px;
+    padding: 0 12px;
+    font-size: .98rem;
+}
+
+.potrero-form .more-details[open] {
+    border-style: solid;
+    background: #f6faf3;
+}
+
+.potrero-form .more-details>.field,
+.potrero-form .more-details>.field-pair {
+    margin-left: 12px;
+    margin-right: 12px;
+}
+
+.potrero-form .more-details>.field:last-child,
+.potrero-form .more-details>.field-pair:last-child {
+    margin-bottom: 12px;
+}
+
+#terrain-form.potrero-form .more-details>.field-pair .field {
+    margin-bottom: 0;
+}
+
+/* Abajo: ubicación exacta (plegada) y Guardar */
+.potrero-form .potrero-footer {
+    display: grid;
+    gap: 10px;
+}
+
+.potrero-form .potrero-footer .more-details {
+    margin: 0;
+}
+
+.potrero-form .potrero-footer .form-submit-row {
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.potrero-form .potrero-footer .terrain-submit {
+    min-height: 52px;
+    margin: 0;
+    font-size: 1.05rem;
+}
+
+/* ── Derecha: herramientas, mapa y superficie ── */
+.potrero-form .potrero-where-card {
+    display: flex;
+    flex-direction: column;
+    padding: 16px 18px 18px;
+}
+
+.potrero-form .map-hint {
+    margin: 0 0 12px;
+    padding: 8px 12px;
+    border-left: 3px solid var(--green-light);
+    border-radius: 6px 10px 10px 6px;
+    background: #f4f8f1;
+    color: #435348;
+    font-size: .9rem;
+    line-height: 1.35;
+}
+
+/* Barra de herramientas: acciones del contorno a la izquierda, «Más herramientas» a la derecha */
+.potrero-form .map-toolbar {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 12px;
+    padding: 0;
+    border: 0;
+    background: none;
+}
+
+.potrero-form .map-toolbar .tool-group-main {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.potrero-form .map-toolbar button,
+.potrero-form .tool-group-main button {
+    flex: 0 0 auto;
+    min-width: 0;
+    min-height: 42px;
+    padding: 0 16px;
+    border: 1px solid #c3d4bf;
+    border-radius: 999px;
+    background: #fff;
+    color: var(--green-dark);
+    font-size: .95rem;
+    font-weight: 700;
+}
+
+.potrero-form .map-toolbar button:hover:not(:disabled) {
+    background: #edf5e9;
+}
+
+.potrero-form .map-toolbar .map-action-primary {
+    border-color: var(--green-dark);
+    background: var(--green-dark);
+    color: #fff;
+}
+
+.potrero-form .map-toolbar .map-action-primary:hover:not(:disabled) {
+    background: var(--green);
+}
+
+.potrero-form .map-toolbar #clear-perimeter {
+    border-color: transparent;
+    background: transparent;
+    color: var(--red);
+}
+
+.potrero-form .map-toolbar #clear-perimeter:hover:not(:disabled) {
+    background: #fbeeec;
+}
+
+.potrero-form #toggle-edit::before,
+.potrero-form #clear-perimeter::before {
+    content: "";
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    margin-right: 7px;
+    vertical-align: -3px;
+    background: currentColor;
+    -webkit-mask: var(--ic) center / contain no-repeat;
+    mask: var(--ic) center / contain no-repeat;
+}
+
+.potrero-form #toggle-edit {
+    --ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 20h9'/%3E%3Cpath d='M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z'/%3E%3C/svg%3E");
+}
+
+.potrero-form #clear-perimeter {
+    --ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 6h18'/%3E%3Cpath d='M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6'/%3E%3Cpath d='M10 11v6M14 11v6'/%3E%3Cpath d='M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2'/%3E%3C/svg%3E");
+}
+
+/* «Más herramientas»: menú flotante sobre el mapa, para que la barra no crezca */
+.potrero-form .more-tools {
+    position: relative;
+    margin-left: auto;
+}
+
+.potrero-form .more-tools>summary {
+    min-height: 42px;
+    padding: 0 14px;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    color: var(--green-dark);
+    font-size: .95rem;
+    list-style: none;
+}
+
+.potrero-form .more-tools>summary::-webkit-details-marker {
+    display: none;
+}
+
+.potrero-form .more-tools>summary::after {
+    content: "▾";
+    margin-left: 7px;
+    font-size: .8rem;
+}
+
+.potrero-form .more-tools>summary:hover,
+.potrero-form .more-tools[open]>summary {
+    background: #edf5e9;
+}
+
+.potrero-form .more-tools .tool-group-aux {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 1200;
+    display: grid;
+    gap: 2px;
+    min-width: 230px;
+    margin: 0;
+    padding: 6px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 14px 32px rgba(30, 61, 40, .2);
+}
+
+.potrero-form .more-tools .tool-group-aux button {
+    justify-content: flex-start;
+    width: 100%;
+    min-height: 42px;
+    border-color: transparent;
+    border-radius: 10px;
+    background: transparent;
+    text-align: left;
+}
+
+.potrero-form .more-tools .tool-group-aux button:hover:not(:disabled) {
+    background: #edf5e9;
+}
+
+/* Mapa: proporcionado a la pantalla, ni banner ni página interminable */
+.potrero-form .farm-map {
+    flex: 1 1 auto;
+    height: clamp(340px, calc(100vh - 540px), 420px);
+    min-height: 340px;
+    border-radius: 14px;
+}
+
+@media (max-width: 900px) {
+    .potrero-form .farm-map {
+        height: clamp(300px, 46vh, 420px);
+        min-height: 300px;
+    }
+}
+
+/* Lectura del mapa: los avisos y errores se ven; «Tu potrero mide…» no se repite porque la superficie ya está abajo (sigue anunciándose a lectores de pantalla) */
+.potrero-form .measurement-readout {
+    gap: 6px;
+}
+
+.potrero-form .map-measure {
+    margin-top: 10px;
+}
+
+.potrero-form:not(:has(#measure-line.is-active)):not(:has(#clear-measurement:not([hidden]))) #live-area:not(.is-error) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+/* Superficie: un único bloque, grande y destacado, bajo el mapa */
+.potrero-form .potrero-area {
+    display: grid;
+    grid-template-columns: auto minmax(150px, 240px) minmax(0, 1fr);
+    align-items: center;
+    gap: 6px 16px;
+    margin-top: 12px;
+    padding: 12px 14px;
+    border: 1px solid #cfe0cb;
+    border-radius: 14px;
+    background: linear-gradient(180deg, #f5faf2 0%, #eaf3e6 100%);
+}
+
+.potrero-form .potrero-area-label {
+    color: var(--green-dark);
+    font-size: .95rem;
+    font-weight: 800;
+}
+
+.potrero-form .area-input {
+    position: relative;
+    display: block;
+}
+
+.potrero-form .area-input input {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 54px;
+    padding: 0 46px 0 14px;
+    border: 2px solid #b6d1b0;
+    border-radius: 12px;
+    background: #fff;
+    color: var(--green-dark);
+    font-size: 1.5rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+
+.potrero-form .area-input input[readonly] {
+    border-style: dashed;
+    background: #f1f6ee;
+    cursor: default;
+}
+
+.potrero-form .area-input em {
+    position: absolute;
+    top: 50%;
+    right: 14px;
+    transform: translateY(-50%);
+    color: var(--muted);
+    font-style: normal;
+    font-weight: 700;
+    pointer-events: none;
+}
+
+.potrero-form .potrero-area .link-btn {
+    justify-self: end;
+    padding: 9px 16px;
+    border: 1px solid #b6d1b0;
+    border-radius: 999px;
+    background: #fff;
+    color: var(--green-dark);
+    font-size: .92rem;
+    text-decoration: none;
+}
+
+.potrero-form .potrero-area .link-btn:hover {
+    background: #edf5e9;
+}
+
+/* Con un contorno dibujado la superficie sale del mapa: el atajo de «lo que queda» no aplica y se explica en una línea */
+.potrero-form .potrero-area:has(input[readonly]) .link-btn {
+    display: none;
+}
+
+.potrero-form .potrero-area:has(input[readonly])::after {
+    content: "Calculada con el contorno del mapa";
+    grid-column: 3;
+    grid-row: 1;
+    color: var(--muted);
+    font-size: .9rem;
+    font-weight: 600;
+}
+
+.potrero-form .potrero-area>.errorlist {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    margin: 0;
+}
+
+/* ── Escritorio: dos columnas con la misma altura; Guardar queda abajo, alineado con el borde del mapa ── */
+@media (min-width: 1100px) {
+    #terrain-form.potrero-form {
+        grid-template-columns: minmax(340px, min(32%, 420px)) minmax(0, 1fr);
+        grid-template-rows: 1fr auto;
+        column-gap: 16px;
+        row-gap: 0;
+        align-items: stretch;
+    }
+
+    .potrero-form .potrero-plant-card {
+        grid-column: 1;
+        grid-row: 1;
+        border-bottom: 0;
+        border-radius: var(--radius) var(--radius) 0 0;
+    }
+
+    .potrero-form .potrero-where-card {
+        grid-column: 2;
+        grid-row: 1 / span 2;
+    }
+
+    .potrero-form .potrero-footer {
+        grid-column: 1;
+        grid-row: 2;
+        padding: 12px 18px 18px;
+        border: 1px solid var(--line);
+        border-top: 0;
+        border-radius: 0 0 var(--radius) var(--radius);
+        background: #fff;
+        box-shadow: inset 0 1px 0 var(--line), 0 1px 3px rgba(30, 61, 40, .06);
+    }
+}
+
+/* ── Tablet: los dos primeros campos lado a lado; ubicación y Guardar en una fila ── */
+@media (min-width: 640px) and (max-width: 1099px) {
+    .potrero-form .potrero-fields {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        column-gap: 14px;
+    }
+
+    .potrero-form .potrero-fields>.alert,
+    .potrero-form .potrero-fields>.more-details {
+        grid-column: 1 / -1;
+    }
+
+    .potrero-form .potrero-footer {
+        grid-template-columns: minmax(0, 1fr) minmax(220px, 320px);
+        align-items: start;
+        gap: 6px 18px;
+        padding: 12px 18px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: #fff;
+    }
+
+    .potrero-form .potrero-footer .form-submit-row {
+        grid-column: auto;
+    }
+}
+
+/* ── Móvil: todo en vertical, sin desbordes ── */
+@media (max-width: 639px) {
+    .potrero-form .potrero-footer {
+        padding: 12px 14px 14px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: #fff;
+    }
+
+    .potrero-form .potrero-body {
+        padding: 14px 14px 4px;
+    }
+
+    .potrero-form .potrero-where-card {
+        padding: 14px 14px 16px;
+    }
+
+    .potrero-identity {
+        padding: 12px 14px;
+    }
+}
+
+@media (max-width: 760px) {
+    .potrero-form .potrero-area {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .potrero-form .potrero-area .link-btn {
+        justify-self: stretch;
+    }
+
+    .potrero-form .potrero-area:has(input[readonly])::after {
+        grid-column: 1;
+        grid-row: auto;
+    }
+
+    .potrero-form .potrero-area>.errorlist {
+        grid-row: auto;
+    }
+}
+
+@media (max-width: 560px) {
+    .potrero-form .map-toolbar,
+    .potrero-form .map-toolbar .tool-group-main {
+        gap: 6px;
+    }
+
+    .potrero-form .tool-group-main button {
+        flex: 1 1 auto;
+        min-height: 42px;
+        padding: 0 8px;
+        font-size: .86rem;
+    }
+
+    .potrero-form #toggle-edit::before,
+    .potrero-form #clear-perimeter::before {
+        width: 14px;
+        height: 14px;
+        margin-right: 4px;
+    }
+
+    .potrero-form .more-tools {
+        margin-left: 0;
+    }
+
+    .potrero-form .more-tools .tool-group-aux {
+        right: auto;
+        left: 0;
+    }
+}
+
+/* ───────── Registrar / editar predio: mapa a la izquierda, datos a la derecha, un solo paso a la vez ─────────
+   Solo presentación. Todo va acotado a .is-predio-layout / .is-predio-heading (el potrero no cambia).
+   Pasos (los marca el JS en .terrain-layout[data-reg-state]): draw → confirm → data → save (y editing). */
+
+/* Defecto corregido: un display:flex sobre #terrain-form anulaba su atributo hidden y mostraba el formulario
+   (con «Guardar predio») al mismo tiempo que «Confirmar y continuar». Mientras se confirma la medida solo se ve
+   la confirmación; el formulario aparece al continuar. */
+.is-simple-layout .terrain-form-card #terrain-form[hidden],
+.is-predio-layout[data-reg-state="confirm"] .terrain-form-card #terrain-form {
+    display: none;
+}
+
+/* Encabezado: título y paso en la misma línea; la instrucción debajo */
+.terrain-page-heading.is-predio-heading {
+    margin-bottom: 12px;
+}
+
+.terrain-page-heading.is-predio-heading>div {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas: "title step" "sub sub";
+    align-items: center;
+    column-gap: 14px;
+    row-gap: 2px;
+}
+
+.is-predio-heading .page-title {
+    grid-area: title;
+    margin: 0;
+    font-size: clamp(1.55rem, 2.2vw, 1.9rem);
+}
+
+.is-predio-heading .page-sub {
+    grid-area: sub;
+    margin: 0;
+    font-size: .95rem;
+}
+
+.is-predio-heading .step-indicator {
+    grid-area: step;
+    justify-self: start;
+    margin: 0;
+    padding: 4px 12px;
+    font-size: .85rem;
+    line-height: 1.3;
+}
+
+@media (max-width: 640px) {
+    .terrain-page-heading.is-predio-heading>div {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas: "title" "sub" "step";
+        row-gap: 4px;
+    }
+
+    .is-predio-heading .step-indicator {
+        margin-top: 4px;
+    }
+}
+
+/* Proporciones: el mapa se lleva el ancho; los datos, una columna fija y cómoda */
+.terrain-layout.is-predio-layout {
+    gap: 16px;
+}
+
+@media (min-width: 1100px) {
+    .terrain-layout.is-predio-layout:not([data-reg-state="draw"]) {
+        grid-template-columns: minmax(0, 1fr) clamp(360px, 32%, 440px);
+    }
+}
+
+/* Tarjetas del paso: menos relleno, mapa con altura controlada (sin pantallas larguísimas) */
+.is-predio-layout .map-card {
+    padding: 16px 18px;
+}
+
+.is-predio-layout .map-card-heading.is-simple h2 {
+    margin: 0;
+    font-size: 1.15rem;
+}
+
+.is-predio-layout .map-hint {
+    margin: 4px 0 10px;
+    font-size: .9rem;
+}
+
+.is-predio-layout:not([data-reg-state="draw"]) .farm-map {
+    height: clamp(380px, calc(100vh - 400px), 600px);
+    min-height: 380px;
+}
+
+@media (max-width: 900px) {
+    .is-predio-layout:not([data-reg-state="draw"]) .farm-map {
+        height: clamp(300px, 48vh, 460px);
+        min-height: 300px;
+    }
+}
+
+.is-predio-layout .terrain-form-card {
+    padding: 16px 18px;
+}
+
+.is-predio-layout .form-card-heading.is-simple {
+    margin: 0 0 10px;
+}
+
+.is-predio-layout .form-card-heading.is-simple h2 {
+    margin: 0;
+    font-size: 1.15rem;
+}
+
+/* Paso 2 (confirmar la medida): el bloque verde pasa a ser la propia tarjeta, sin título repetido */
+.is-predio-layout[data-reg-state="confirm"] .form-card-heading {
+    display: none;
+}
+
+.is-predio-layout[data-reg-state="confirm"] .terrain-form-card {
+    padding: 0;
+    overflow: hidden;
+}
+
+.is-predio-layout .perimeter-confirmation {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0 12px;
+    margin: 0;
+    padding: 16px 18px 10px;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.is-predio-layout .perimeter-confirmation[hidden] {
+    display: none;
+}
+
+.is-predio-layout .perimeter-confirmation>* {
+    grid-column: 1 / -1;
+    min-width: 0;
+}
+
+.is-predio-layout .confirm-lead {
+    font-size: .92rem;
+}
+
+.is-predio-layout .confirm-big {
+    margin: 0 0 12px;
+    font-size: 1.9rem;
+    line-height: 1.1;
+}
+
+/* Los dos botones pasan a ser parte de la misma rejilla: uno principal y uno discreto junto a los datos técnicos */
+.is-predio-layout .perimeter-confirmation .confirmation-actions {
+    display: contents;
+}
+
+.is-predio-layout .perimeter-confirmation #confirm-and-continue {
+    grid-column: 1 / -1;
+    min-height: 48px;
+    font-size: 1rem;
+}
+
+.is-predio-layout .perimeter-confirmation #return-to-edit {
+    grid-column: 1;
+    width: auto;
+    min-height: 40px;
+    margin-top: 6px;
+    padding: 0 10px 0 4px;
+    justify-self: start;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    color: var(--green-dark);
+    font-size: .92rem;
+    font-weight: 700;
+}
+
+.is-predio-layout .perimeter-confirmation #return-to-edit:hover {
+    background: rgba(37, 91, 55, .08);
+}
+
+.is-predio-layout .perimeter-confirmation .tech-details {
+    grid-column: 2;
+    margin: 6px 0 0;
+    text-align: right;
+}
+
+.is-predio-layout .perimeter-confirmation .tech-details[open] {
+    grid-column: 1 / -1;
+    text-align: left;
+}
+
+.is-predio-layout .tech-details>summary {
+    min-height: 40px;
+    font-size: .88rem;
+}
+
+/* Paso 3 (datos): la medida queda en una línea compacta sobre el formulario */
+.is-predio-layout .map-form-summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0 8px;
+    margin: 0 0 12px;
+    padding: 6px 10px;
+    border: 1px solid #d4e5cc;
+    border-radius: 12px;
+    background: var(--green-soft);
+}
+
+.is-predio-layout .map-form-summary[hidden] {
+    display: none;
+}
+
+.is-predio-layout .map-form-summary .summary-line {
+    font-size: .92rem;
+}
+
+.is-predio-layout .map-form-summary .summary-line strong {
+    font-size: 1.05rem;
+}
+
+.is-predio-layout .map-form-summary .tech-details>summary {
+    min-height: 36px;
+    font-size: .82rem;
+}
+
+.is-predio-layout .map-form-summary .tech-details {
+    margin: 0;
+    text-align: right;
+}
+
+.is-predio-layout .map-form-summary .tech-details[open] {
+    flex: 1 1 100%;
+    text-align: left;
+}
+
+/* Formulario compacto y ordenado */
+.is-predio-layout .predio-fields {
+    gap: 0;
+}
+
+.is-predio-layout #terrain-form .field {
+    margin-bottom: 10px;
+}
+
+.is-predio-layout .predio-fields .field>span {
+    font-size: .9rem;
+}
+
+.is-predio-layout .predio-fields input,
+.is-predio-layout .predio-fields select {
+    min-height: 46px;
+    font-size: 1rem;
+}
+
+.is-predio-layout .predio-fields textarea {
+    min-height: 84px;
+    font-size: 1rem;
+}
+
+.is-predio-layout .more-details {
+    margin: 0 0 8px;
+}
+
+.is-predio-layout .more-details>summary {
+    min-height: 40px;
+    font-size: .95rem;
+}
+
+/* Guardar: un botón principal; el aviso de privacidad y «Sobre este registro» en una sola línea discreta */
+.is-predio-layout .form-submit-row.is-stacked {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding-top: 12px;
+    border-top: 1px solid var(--line);
+}
+
+.is-predio-layout .form-submit-row .terrain-submit {
+    width: 100%;
+    min-height: 50px;
+    margin-bottom: 6px;
+    font-size: 1.05rem;
+}
+
+.is-predio-layout .form-submit-row .save-note {
+    justify-content: center;
+    font-size: .8rem;
+}
+
+.is-predio-layout .legal-note {
+    align-self: center;
+    font-size: .8rem;
+    text-align: center;
+}
+
+.is-predio-layout .legal-note>summary {
+    justify-content: center;
+    min-height: 32px;
+}
+
+.is-predio-layout .form-submit-row .privacy-note {
+    justify-content: center;
+    font-size: .78rem;
+    text-align: center;
+}
+
+/* En la pantalla de datos «Corregir contorno» siempre está a mano (antes, al abrir «Editar predio», el botón «Listo»
+   —oculto en este paso— hacía que el CSS escondiera también «Corregir contorno» y no había cómo ajustar el contorno). */
+.is-predio-layout[data-reg-state="data"] .map-toolbar.is-predio:has(#accept-perimeter:not([hidden])) #edit-perimeter:not([hidden]),
+.is-predio-layout[data-reg-state="save"] .map-toolbar.is-predio:has(#accept-perimeter:not([hidden])) #edit-perimeter:not([hidden]) {
+    display: inline-flex;
+}
+
+/* Mientras se ajusta el contorno la única acción es «Listo»: «Guardar predio» vuelve cuando la medida se confirma */
+.is-predio-layout[data-reg-state="editing"] .form-submit-row {
+    display: none;
+}
+
+/* Herramientas del mapa en una sola línea (no una caja alta encima del mapa) */
+.is-predio-layout .map-toolbar {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 12px;
+    margin: 0 0 10px;
+    padding: 6px 8px;
+    border-radius: 12px;
+}
+
+.is-predio-layout .map-toolbar button {
+    min-height: 42px;
+    padding: 0 18px;
+    border-radius: 10px;
+    font-size: .95rem;
+}
+
+.is-predio-layout .tool-group-main {
+    flex: 0 1 auto;
+    gap: 8px;
+}
+
+.is-predio-layout .tool-group-main button {
+    flex: 0 0 auto;
+    min-width: 0;
+}
+
+.is-predio-layout .more-tools>summary {
+    min-height: 42px;
+    padding: 0 6px;
+    font-size: .92rem;
+}
+
+.is-predio-layout .more-tools[open] {
+    flex: 1 1 100%;
+}
+
+.is-predio-layout .more-tools .tool-group-aux {
+    margin: 0;
+    padding: 0 0 2px;
+    border-left: 0;
+}
+
+.is-predio-layout .more-tools .tool-group-aux button {
+    flex: 0 1 auto;
+    min-height: 40px;
+}
+
+@media (max-width: 560px) {
+    .is-predio-layout .tool-group-main {
+        flex: 1 1 100%;
+    }
+
+    .is-predio-layout .tool-group-main button {
+        flex: 1 1 auto;
+    }
 }

@@ -602,61 +602,6 @@
     form.dispatchEvent(new CustomEvent('flow:refresh'));
     showTool(params.get('herramienta') || 'llevar');
   }
-  // ---------- línea de contexto: dónde estás (Predio › Potrero › Cultivo › Herramienta) ----------
-  const ctxLine = document.getElementById('ctx-line');
-  function renderContextLine() {
-    if (!ctxLine) return;
-    const tool = root.dataset.tool || 'llevar';
-    const field = (id) => {
-      const node = document.getElementById(id);
-      return node ? node.value : '';
-    };
-    const formValue = (formId, name) => {
-      const form = document.getElementById(formId);
-      return form && form.elements[name] ? form.elements[name].value : '';
-    };
-    let plotId = '';
-    let cropId = '';
-    let label = '';
-    if (tool === 'llevar') {
-      plotId = field('calc-plot');
-      cropId = field('calc-crop');
-      const active = document.querySelector('#calc-modes [data-mode].is-active');
-      label = active && active.dataset.mode === 'insumos' ? 'Calcular insumos' : 'Calcular semillas';
-    } else {
-      plotId = formValue('cover-form', 'plot');
-      cropId = formValue('cover-form', 'crop');
-      label = 'Ver si alcanza';
-    }
-    const plot = plotId ? plotById(plotId) : null;
-    const crop = cropId ? cropById(cropId) : null;
-    const owner = plot ? farmOf(plot) : null;
-    const crumbs = [];
-    if (owner) crumbs.push({ text: owner.name, href: owner.detailUrl });
-    if (plot) crumbs.push({ text: plot.name, href: plot.detailUrl });
-    if (crop) crumbs.push({ text: crop.name });
-    crumbs.push({ text: label, current: true });
-    ctxLine.replaceChildren();
-    crumbs.forEach((crumb, index) => {
-      if (index) ctxLine.append(el('span', 'ctx-sep', '›'));
-      if (crumb.href) {
-        const link = el('a', 'ctx-crumb', crumb.text);
-        link.href = crumb.href;
-        ctxLine.append(link);
-      } else {
-        const node = el('span', crumb.current ? 'ctx-crumb is-current' : 'ctx-crumb', crumb.text);
-        if (crumb.current) node.setAttribute('aria-current', 'page');
-        ctxLine.append(node);
-      }
-    });
-    if (!plot) ctxLine.append(el('span', 'ctx-hint', 'Elige un potrero para continuar'));
-  }
-  // Los selectores y botones de los flujos cambian el estado; se vuelve a leer después de que ellos actualizan.
-  ['change', 'click', 'flow:refresh', 'input'].forEach((name) =>
-    document.addEventListener(name, () => window.setTimeout(renderContextLine, 0), true),
-  );
-  renderContextLine();
-
   window.AgroDecisiones = { showTool, goToAvailability };
   applyInitialSelection();
 })();

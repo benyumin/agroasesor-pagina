@@ -123,8 +123,8 @@
         plotHost.append(
           emptyCard(
             '🗺️',
-            'Tu predio ya está registrado: ¿cómo quieres trabajar este terreno?',
-            'Los cálculos se hacen por potrero. Usa todo el predio como un solo potrero o divídelo en sectores.',
+            'Aún no tienes potreros',
+            'Los cálculos se hacen por potrero.',
             [h('a', { class: 'btn-primary-agro btn-sm', href: farmWithSetup.setupUrl }, 'Definir potreros')],
           ),
         );
@@ -132,8 +132,8 @@
         plotHost.append(
           emptyCard(
             '🗺️',
-            'Comienza registrando tu predio',
-            'Primero registra tu predio; después defines sus potreros y podrás calcular cuánto llevar.',
+            'Aún no tienes predios',
+            'Regístralo para empezar a calcular.',
             [
               h(
                 'a',

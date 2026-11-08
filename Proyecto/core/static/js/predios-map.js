@@ -884,6 +884,9 @@
     if (currentLayer) map.removeLayer(currentLayer);
     currentLayer = L.geoJSON(feature, {
       style: { color: '#255b37', weight: 3, fillColor: '#74a567', fillOpacity: 0.24 },
+      // Con setOptIn(true) Geoman solo actúa sobre capas con pmIgnore:false; sin esto, «Volver a editar» y
+      // «Corregir contorno» no hacían nada sobre un contorno recién dibujado (sí funcionaban al recargar uno guardado).
+      pmIgnore: false,
     }).getLayers()[0];
     if (!currentLayer) return false;
     currentLayer.addTo(map);
@@ -1857,4 +1860,22 @@
       if (event.persisted) window.location.reload();
     });
   }
+})();
+
+// Editar/registrar potrero: «Más herramientas» es un menú flotante sobre el mapa.
+// Se cierra al tocar fuera, con Escape o al elegir una herramienta; no toca la lógica del mapa.
+(() => {
+  const menu = document.querySelector('.potrero-form .more-tools');
+  if (!menu) return;
+  const summary = menu.querySelector('summary');
+  document.addEventListener('click', (event) => {
+    if (!menu.open || (summary && summary.contains(event.target))) return;
+    const choseTool = menu.contains(event.target) && Boolean(event.target.closest('button'));
+    if (!menu.contains(event.target) || choseTool) menu.open = false;
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || !menu.open) return;
+    menu.open = false;
+    if (summary) summary.focus();
+  });
 })();

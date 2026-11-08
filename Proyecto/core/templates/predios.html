@@ -2,7 +2,7 @@
 {% load static agro_assets %}
 {% block title %}Mis predios y potreros · AgroAsesor{% endblock %}
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'css/predios.css' %}?v=27">
+    <link rel="stylesheet" href="{% static 'css/predios.css' %}?v=31">
 {% endblock %}
 {% block content %}
     <div class="page-hero terrain-page-heading">
@@ -16,7 +16,6 @@
     <section class="card farm-picker" aria-labelledby="farm-picker-title">
         <div class="section-heading">
             <div>
-                <span class="terrain-eyebrow">Tus predios</span>
                 <h2 id="farm-picker-title">MIS PREDIOS REGISTRADOS</h2>
             </div>
             {% if farm_cards %}
@@ -271,7 +270,6 @@
                  aria-labelledby="potrero-history-title">
             <div class="section-heading">
                 <div>
-                    <span class="terrain-eyebrow">Registros persistidos</span>
                     <h2 id="potrero-history-title">HISTORIAL DE POTREROS</h2>
                 </div>
                 <span class="map-badge">{{ potrero_history_page.paginator.count }} registrados</span>

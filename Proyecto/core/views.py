@@ -21,6 +21,7 @@ from django.utils.formats import number_format
 from django.views.decorators.http import require_POST
 from django.views.decorators.cache import never_cache
 from .auth import MENSAJE_VENCIDA
+from .search import run_search
 from .catalog import (
     CATEGORY_LABELS,
     catalog_payload,
@@ -284,16 +285,15 @@ ORIGIN_LABELS = {
     'adjusted': 'Ajustado manualmente',
     'simulation': 'Simulación',
 }
-JOURNEY_PAGES = {'dashboard', 'predios', 'calendario', 'decisiones', 'reportes'}
+# El Centro de decisiones y las calculadoras no llevan la ruta de seis pasos: arrancan directo en la herramienta.
+JOURNEY_PAGES = {'dashboard', 'predios', 'calendario', 'reportes'}
 JOURNEY_HERE = {
     'predios': {'predio', 'potreros', 'cultivo'},
     'calendario': {'siembra'},
-    'decisiones': {'decisiones'},
     'reportes': {'reporte'},
 }
 JOURNEY_NOTES = {
     'calendario': 'Después de elegir cultivo, completa la fecha de siembra del potrero.',
-    'decisiones': 'Para calcular necesitas: potrero + cultivo + superficie + dosis (del catálogo o ingresada como simulación).',
     'reportes': 'Los cálculos del Centro de decisiones quedan guardados y aparecen aquí.',
 }
 
@@ -657,7 +657,7 @@ def _page(request, template, current, extra=None):
         'menu': build_menu(request, current),
         'current': current,
         'query': request.GET.get('q', ''),
-        'catalog': catalog_payload(),
+        'catalog': extra.get('catalog') or catalog_payload(),
         'farm_data': extra.get('farm_data') or farm_payload(request.user),
         'pending_activities': ActividadAgricola.objects.filter(
             usuario=request.user,
@@ -1398,11 +1398,11 @@ def predio_detail(request, pk):
         )
         historial = historial.filter(potrero=selected_potrero)
     superficie_utilizada = potreros.aggregate(total=Sum('superficie_ha'))['total'] or Decimal('0')
-    just_created = request.GET.get('nuevo') == '1' and not potreros
-    can_use_whole = bool(predio.geojson) and not potreros
+    # El asistente «¿Cómo deseas organizar tu predio?» se muestra mientras el predio no tenga potreros (recién
+    # registrado o con la decisión pendiente) y desaparece en cuanto existe el primero.
+    needs_setup = not potreros
+    can_use_whole = bool(predio.geojson) and needs_setup
     farm_card = farm_cards(request.user, [predio])[0]
-    if just_created:
-        list(messages.get_messages(request))  # el aviso de éxito se muestra en la tarjeta de siguiente paso
     return _page(
         request,
         'predio_detail.html',
@@ -1410,8 +1410,8 @@ def predio_detail(request, pk):
         {
             'journey': None,  # la ficha ya trae su propio «Siguiente paso» por predio
             'farm_card': farm_card,
-            'next_step': None if just_created else farm_card['ui']['next_step'],
-            'just_created': just_created,
+            'next_step': None if needs_setup else farm_card['ui']['next_step'],
+            'needs_setup': needs_setup,
             'can_use_whole': can_use_whole,
             'predio': predio,
             'potreros': potreros,
@@ -1438,6 +1438,30 @@ def _without_geometry(farm_data):
             {**plot, 'geojson': None, 'coordinates': None, 'lat': None, 'lng': None} for plot in farm_data['plots']
         ],
     }
+
+
+# Ventana en la que un segundo envío idéntico se considera el mismo registro enviado dos veces (doble clic, toque
+# repetido, botón «Atrás» + reenviar). Pasado ese tiempo se trata como un registro nuevo.
+RESUBMIT_WINDOW = timedelta(minutes=2)
+
+
+def _same_json(left, right):
+    """Compara dos geometrías ya guardadas o recibidas, sin importar el orden de las claves."""
+    return json.dumps(left, sort_keys=True) == json.dumps(right, sort_keys=True)
+
+
+def _recent_predio_duplicate(user, cleaned):
+    """Predio que esta misma persona acaba de registrar con los mismos datos y el mismo trazado."""
+    candidates = Predio.objects.filter(
+        propietario=user,
+        nombre=cleaned.get('nombre'),
+        superficie_ha=cleaned.get('superficie_ha'),
+        creado__gte=timezone.now() - RESUBMIT_WINDOW,
+    ).order_by('-creado', '-pk')
+    for candidate in candidates:
+        if _same_json(candidate.geojson, cleaned.get('geojson')):
+            return candidate
+    return None
 
 
 @login_required
@@ -1468,6 +1492,13 @@ def predio_form(request, pk=None):
         if form.errors:
             pass
         else:
+            if original is None:
+                # Se serializan los registros de la misma persona: dos envíos simultáneos esperan su turno y el
+                # segundo reconoce que el primero ya creó el predio, en vez de crear otro y repetir el aviso.
+                get_user_model().objects.select_for_update().get(pk=request.user.pk)
+                repeated = _recent_predio_duplicate(request.user, form.cleaned_data)
+                if repeated is not None:
+                    return redirect(f"{reverse('predio_detail', args=[repeated.pk])}?nuevo=1")
             predio = form.save(commit=False)
             predio.propietario = request.user
             predio.save()
@@ -1537,16 +1568,11 @@ def predio_form(request, pk=None):
                         superficie_anterior_ha=original['superficie_ha'] if area_changed else None,
                         superficie_nueva_ha=predio.superficie_ha if area_changed else None,
                     )
-            messages.success(
-                request,
-                (
-                    'El predio quedó guardado correctamente y ya aparece en Siembra.'
-                    if original is None
-                    else 'El predio quedó guardado correctamente.'
-                ),
-            )
             if original is None:
+                # Al registrar no se manda ningún aviso: la ficha del predio nuevo ya es la confirmación y trae
+                # la pregunta siguiente («¿Cómo deseas organizar tu predio?»).
                 return redirect(f"{reverse('predio_detail', args=[predio.pk])}?nuevo=1")
+            messages.success(request, 'El predio quedó guardado correctamente.')
             return redirect('predio_detail', pk=predio.pk)
     return _page(
         request,
@@ -1571,6 +1597,13 @@ def predio_usar_completo(request, pk):
     """Crea un único potrero con la misma geometría del predio, sin pedir dibujar otra vez."""
     predio = get_object_or_404(Predio.objects.select_for_update(), pk=pk, propietario=request.user)
     if predio.potreros.exists():
+        # Segundo envío del mismo botón (doble clic): el primero ya creó el potrero, se continúa hacia él sin
+        # repetir ningún aviso. Solo si el predio ya tenía potreros de antes se explica por qué no se creó otro.
+        reciente = (
+            predio.potreros.filter(creado__gte=timezone.now() - RESUBMIT_WINDOW).order_by('-creado', '-pk').first()
+        )
+        if reciente is not None and predio.potreros.count() == 1:
+            return redirect('potrero_edit', predio_pk=predio.pk, pk=reciente.pk)
         messages.info(request, 'Este predio ya tiene potreros. Puedes agregar más desde esta ficha.')
         return redirect('predio_detail', pk=predio.pk)
     if not predio.geojson:
@@ -1606,6 +1639,31 @@ def predio_usar_completo(request, pk):
     return redirect('potrero_edit', predio_pk=predio.pk, pk=potrero.pk)
 
 
+def _recent_potrero_duplicate(predio, data):
+    """Potrero de este predio recién creado con el mismo nombre y el mismo trazado (o la misma superficie)."""
+    nombre = ' '.join((data.get('nombre') or '').split())
+    if not nombre:
+        return None
+    try:
+        perimetro = json.loads(data.get('perimetro') or '[]')
+    except ValueError:
+        perimetro = None
+    try:
+        superficie = Decimal(str(data.get('superficie_ha') or '').replace(',', '.'))
+    except InvalidOperation:
+        superficie = None
+    candidates = predio.potreros.filter(
+        nombre__iexact=nombre, creado__gte=timezone.now() - RESUBMIT_WINDOW
+    ).order_by('-creado', '-pk')
+    for candidate in candidates:
+        if perimetro:
+            if _same_json(candidate.perimetro, perimetro):
+                return candidate
+        elif not candidate.perimetro and superficie is not None and candidate.superficie_ha == superficie:
+            return candidate
+    return None
+
+
 @login_required
 @transaction.atomic
 def potrero_form(request, predio_pk, pk=None):
@@ -1629,6 +1687,12 @@ def potrero_form(request, predio_pk, pk=None):
             'latitud': instance.latitud,
             'longitud': instance.longitud,
         }
+    if request.method == 'POST' and not instance.pk:
+        repeated = _recent_potrero_duplicate(predio, request.POST)
+        if repeated is not None:
+            # El mismo formulario llegó dos veces (doble clic): el primer envío ya creó el potrero. No se crea otro
+            # ni se repite el aviso; se continúa a la ficha del predio.
+            return redirect('predio_detail', pk=predio.pk)
     form = PotreroForm(request.POST or None, instance=instance)
     min_area = Decimal('0.0001')
     # Sin hectáreas libres no se pone «max»: un máximo menor que el mínimo hace que el navegador rechace todo en silencio.
@@ -2593,8 +2657,18 @@ def evaluate_calendar_date(request):
     return JsonResponse(result)
 
 
+@login_required
 def busqueda(request):
-    return _page(request, 'busqueda.html', 'busqueda')
+    """Buscar: una sola búsqueda en el servidor (también atiende al buscador de la barra superior).
+
+    Reutiliza el catálogo y los predios del usuario que la página ya necesita (``catalog_payload`` y
+    ``farm_payload``), así que no suma consultas y nunca muestra predios de otras cuentas.
+    """
+    catalog = catalog_payload()
+    farm_data = farm_payload(request.user)
+    context = run_search(catalog, farm_data, request.GET)
+    context.update(catalog=catalog, farm_data=farm_data)
+    return _page(request, 'busqueda.html', 'busqueda', context)
 
 
 REPORT_TYPES = [

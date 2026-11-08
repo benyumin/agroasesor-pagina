@@ -2,18 +2,17 @@
 {% load static agro_assets %}
 {% block title %}{{ heading }} · AgroAsesor{% endblock %}
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'css/predios.css' %}?v=27">
+    <link rel="stylesheet" href="{% static 'css/predios.css' %}?v=34">
 {% endblock %}
 {% block content %}
     <nav class="crumbs" aria-label="Dónde estás"><a href="{% url 'predios' %}">Mis predios</a>{% if predio %}<span aria-hidden="true">›</span><a href="{% url 'predio_detail' predio.pk %}">{{ predio.nombre }}</a>{% endif %}{% if is_potrero %}<span aria-hidden="true">›</span><span class="is-current" aria-current="page">{{ heading }}</span>{% elif not predio %}<span aria-hidden="true">›</span><span class="is-current" aria-current="page">{{ heading }}</span>{% endif %}</nav>
-    <div class="terrain-page-heading is-simple">
+    <div class="terrain-page-heading is-simple{% if is_potrero %} is-potrero-heading{% elif is_predio %} is-predio-heading{% endif %}">
         <div>
             <h1 class="page-title">{{ heading }}</h1>
-            <p class="page-sub">{% if is_predio %}{% if form.instance.pk %}Corrige el contorno o los datos de tu predio.{% else %}Dibuja el contorno de tu campo en el mapa.{% endif %}{% else %}{% if form.instance.pk %}Corrige los datos de tu potrero.{% else %}Dile qué vas a plantar y dónde queda.{% endif %}{% endif %}</p>
+            {% if is_predio %}<p class="page-sub">{% if form.instance.pk %}Corrige el contorno o los datos de tu predio.{% else %}Dibuja el contorno de tu campo en el mapa.{% endif %}</p>{% endif %}
             {% if is_predio and not form.instance.pk %}<p id="step-indicator"
    class="step-indicator"
    role="status">Paso 1 de 3 · Dibuja tu campo</p>{% endif %}
-            {% if is_potrero and predio %}<p class="terrain-parent">Predio: <strong>{{ predio.nombre }}</strong> · quedan {{ potrero_superficie_disponible|floatformat:2 }} ha disponibles</p>{% endif %}
         </div>
     </div>
     {% if potrero_sin_espacio %}
@@ -22,11 +21,108 @@
             <p>Los potreros que ya creaste ocupan todo el predio ({{ predio.superficie_ha|floatformat:2 }} ha). Para agregar otro, reduce o edita uno existente, o corrige la superficie del predio.</p>
             <div class="no-space-actions"><a class="btn-primary-agro" href="{% url 'predio_detail' predio.pk %}">Ver potreros del predio</a><a class="btn-secondary-agro" href="{% url 'predio_edit' predio.pk %}">Editar el predio</a></div>
         </section>
+    {% elif is_potrero %}
+        <form method="post"
+              id="terrain-form"
+              class="terrain-layout is-simple-layout is-potrero-layout potrero-form">
+            {% csrf_token %}
+            {% for field in form.hidden_fields %}{{ field }}{{ field.errors }}{% endfor %}
+            <section class="card terrain-form-card potrero-plant-card">
+                <div class="potrero-identity">
+                    <span class="potrero-identity-icon" aria-hidden="true"><i data-lucide="sprout"></i></span>
+                    <div class="potrero-identity-text">
+                        <strong class="potrero-identity-name">{% if form.instance.pk %}{{ form.initial.nombre }}{% else %}Potrero nuevo{% endif %}</strong>
+                        {% if predio %}<p class="potrero-identity-parent">Predio: <strong>{{ predio.nombre }}</strong> · quedan {{ potrero_superficie_disponible|floatformat:2 }} ha disponibles</p>{% endif %}
+                    </div>
+                </div>
+                <div class="potrero-body">
+                    <div class="form-card-heading is-simple"><h2>1 · ¿Qué vas a plantar?</h2></div>
+                    {{ form.non_field_errors }}
+                    <div class="potrero-fields">
+                        <label class="field" for="{{ form.nombre.id_for_label }}"><span>Nombre del potrero <b class="req" aria-hidden="true">*</b></span>{{ form.nombre }}{{ form.nombre.errors }}</label>
+                        <label class="field" for="{{ form.cultivo.id_for_label }}"><span>Cultivo</span>{{ form.cultivo }}{{ form.cultivo.errors }}</label>
+                        {% if not form.fields.cultivo.queryset.exists %}<div class="alert" role="status"><strong>Aún no hay cultivos para elegir.</strong><p>Puedes guardar el potrero sin cultivo y asignarlo después. {% if request.user.is_staff %}Para cargar la lista base, ve a <a href="{% url 'admin_panel' %}">Administración</a> y usa «Cargar cultivos base».{% else %}Pide al administrador que cargue los cultivos del catálogo.{% endif %}</p></div>{% endif %}
+                        <details class="more-details"
+                                 {% if form.variedad.errors or form.fecha_siembra.errors or form.fecha_cosecha.errors %} open{% endif %}><summary>Agregar más detalles</summary>
+                            <label class="field"
+                                   for="{{ form.variedad.id_for_label }}"><span>Variedad</span>{{ form.variedad }}{{ form.variedad.errors }}</label>
+                            <div class="field-pair">
+                                <label class="field"
+                                       for="{{ form.fecha_siembra.id_for_label }}"><span>Fecha de siembra</span>{{ form.fecha_siembra }}{{ form.fecha_siembra.errors }}</label>
+                                <label class="field"
+                                       for="{{ form.fecha_cosecha.id_for_label }}"><span>Fecha de cosecha</span>{{ form.fecha_cosecha }}{{ form.fecha_cosecha.errors }}</label>
+                            </div>
+                        </details>
+                    </div>
+                </div>
+            </section>
+            <section class="card map-card potrero-where-card">
+                <div class="map-card-heading is-simple"><h2>2 · ¿Dónde queda? <small>(opcional)</small></h2></div>
+                <p id="map-status"
+                   class="map-hint"
+                   role="status">Dibuja tu potrero dentro del límite verde, o escribe las hectáreas abajo.</p>
+                <div class="map-actions map-toolbar is-potrero"
+                     role="toolbar"
+                     aria-label="Herramientas del mapa">
+                    <div class="tool-group tool-group-main">
+                        <button type="button"
+                                id="draw-perimeter"
+                                class="map-action-primary"><span aria-hidden="true">⬡</span> Dibujar mi potrero</button>
+                        <button type="button" id="undo-point" disabled>Deshacer</button>
+                        <button type="button"
+                                id="finish-perimeter"
+                                class="map-action-primary"
+                                disabled>Terminar</button>
+                        <button type="button" id="finish-line" disabled hidden>Terminar medición</button>
+                        <button type="button" id="cancel-drawing" hidden>Cancelar</button>
+                        <button type="button" id="toggle-edit" hidden>Corregir contorno</button>
+                        <button type="button" id="clear-perimeter">Borrar contorno</button>
+                    </div>
+                    <details class="more-tools">
+                        <summary>Más herramientas</summary>
+                        <div class="tool-group tool-group-aux">
+                            <button type="button"
+                                    id="measure-line"
+                                    class="secondary-action"><span aria-hidden="true">↗</span> Medir una línea</button>
+                            <button type="button" id="clear-measurement" hidden>Borrar línea</button>
+                            <button type="button" id="locate-me">Mi ubicación</button>
+                            <button type="button" id="center-map">Ver el predio</button>
+                        </div>
+                    </details>
+                </div>
+                <div id="farm-map"
+                     class="farm-map"
+                     {% if form.errors %} data-focus-parent-only="false"{% endif %}
+                     aria-label="Mapa interactivo de predios y potreros"></div>
+                <div class="measurement-readout" aria-live="polite">
+                    <p id="live-perimeter" class="map-measure"></p>
+                    <p id="live-area" class="map-measure"></p>
+                </div>
+                <div class="potrero-area">
+                    <label class="potrero-area-label" for="{{ form.superficie_ha.id_for_label }}">Superficie (ha)</label>
+                    <span class="area-input">{{ form.superficie_ha }}<em aria-hidden="true">ha</em></span>
+                    {% if form.superficie_ha.field.widget.attrs.max %}<button type="button" class="link-btn" data-fill-available>Usar lo que queda ({{ potrero_superficie_disponible|floatformat:2 }} ha)</button>{% endif %}
+                    {{ form.superficie_ha.errors }}
+                </div>
+            </section>
+            <div class="potrero-footer">
+                <details class="more-details is-advanced"
+                         {% if form.latitud.errors or form.longitud.errors %} open{% endif %}><summary>Ubicación exacta (avanzado)</summary>
+                    <div class="field-pair">
+                        <label class="field"
+                               for="{{ form.latitud.id_for_label }}"><span>Latitud</span>{{ form.latitud }}{{ form.latitud.errors }}</label>
+                        <label class="field"
+                               for="{{ form.longitud.id_for_label }}"><span>Longitud</span>{{ form.longitud }}{{ form.longitud.errors }}</label>
+                    </div>
+                </details>
+                <div class="form-submit-row is-stacked"><button class="btn-primary-agro terrain-submit" type="submit"><i data-lucide="save"></i> Guardar potrero</button></div>
+            </div>
+        </form>
     {% else %}
-        <div class="terrain-layout{% if is_predio %} is-predio-layout is-simple-layout{% elif is_potrero %} is-potrero-layout is-simple-layout{% endif %}">
-            {% if is_potrero or is_predio %}
+        <div class="terrain-layout{% if is_predio %} is-predio-layout is-simple-layout{% endif %}">
+            {% if is_predio %}
                 <section class="card map-card">
-                {% if is_predio %}<div class="map-card-heading is-simple"><h2>¿Dónde está tu predio?</h2></div>
+                <div class="map-card-heading is-simple"><h2>¿Dónde está tu predio?</h2></div>
                 <p id="map-status"
                    class="map-hint"
                    role="status">Toca «Dibujar mi campo» y marca las esquinas de tu predio.</p>
@@ -60,43 +156,8 @@
                         </div>
                     </details>
                 </div>
-            {% else %}<div class="map-card-heading is-simple"><h2>2 · ¿Dónde queda? <small>(opcional)</small></h2></div>
-                <p id="map-status"
-                   class="map-hint"
-                   role="status">Opcional: dibuja tu potrero dentro del límite verde, o escribe las hectáreas.</p>
-                <div class="map-actions map-toolbar is-potrero"
-                     role="toolbar"
-                     aria-label="Herramientas del mapa">
-                    <div class="tool-group tool-group-main">
-                        <button type="button"
-                                id="draw-perimeter"
-                                class="map-action-primary"><span aria-hidden="true">⬡</span> Dibujar mi potrero</button>
-                        <button type="button" id="undo-point" disabled>Deshacer</button>
-                        <button type="button"
-                                id="finish-perimeter"
-                                class="map-action-primary"
-                                disabled>Terminar</button>
-                        <button type="button" id="finish-line" disabled hidden>Terminar medición</button>
-                        <button type="button" id="cancel-drawing" hidden>Cancelar</button>
-                        <button type="button" id="toggle-edit" hidden>Corregir contorno</button>
-                        <button type="button" id="clear-perimeter">Borrar contorno</button>
-                    </div>
-                    <details class="more-tools">
-                        <summary>Más herramientas</summary>
-                        <div class="tool-group tool-group-aux">
-                            <button type="button"
-                                    id="measure-line"
-                                    class="secondary-action"><span aria-hidden="true">↗</span> Medir una línea</button>
-                            <button type="button" id="clear-measurement" hidden>Borrar línea</button>
-                            <button type="button" id="locate-me">Mi ubicación</button>
-                            <button type="button" id="center-map">Ver el predio</button>
-                        </div>
-                    </details>
-                </div>
-            {% endif %}
             <div id="farm-map"
                  class="farm-map"
-                 {% if is_potrero and form.errors %} data-focus-parent-only="false"{% endif %}
                  aria-label="Mapa interactivo de predios y potreros"></div>
             <div class="measurement-readout" aria-live="polite">
                 <p id="live-perimeter" class="map-measure"></p>
@@ -105,7 +166,7 @@
         </section>
     {% endif %}
     <section class="card terrain-form-card">
-        {% if is_predio %}<div class="form-card-heading is-simple"><h2>{% if form.instance.pk %}Datos de tu predio{% else %}Ponle nombre a tu predio{% endif %}</h2></div>{% else %}<div class="form-card-heading is-simple"><h2>1 · ¿Qué vas a plantar?</h2></div>{% endif %}
+        {% if is_predio %}<div class="form-card-heading is-simple"><h2>{% if form.instance.pk %}Datos de tu predio{% else %}Ponle nombre a tu predio{% endif %}</h2></div>{% endif %}
         {% if is_predio %}<div id="registration-prompt"
      class="registration-prompt"
      {% if registration_open or form.instance.pk %}hidden{% endif %}><strong id="registration-prompt-title">Primero dibuja tu campo</strong><p id="registration-prompt-text">Marca las esquinas de tu predio en el mapa.</p></div>{% endif %}
@@ -157,33 +218,6 @@
                     </details>
                 </div>
             {% endwith %}
-{% elif is_potrero %}{% for field in form.hidden_fields %}{{ field }}{{ field.errors }}{% endfor %}
-    <div class="potrero-fields">
-        <label class="field" for="{{ form.nombre.id_for_label }}"><span>Nombre del potrero <b class="req" aria-hidden="true">*</b></span>{{ form.nombre }}{{ form.nombre.errors }}</label>
-        <label class="field" for="{{ form.cultivo.id_for_label }}"><span>Cultivo</span>{{ form.cultivo }}{{ form.cultivo.errors }}<small>Puedes dejarlo vacío y elegirlo después.</small></label>
-        {% if not form.fields.cultivo.queryset.exists %}<div class="alert" role="status"><strong>Aún no hay cultivos para elegir.</strong><p>Puedes guardar el potrero sin cultivo y asignarlo después. {% if request.user.is_staff %}Para cargar la lista base, ve a <a href="{% url 'admin_panel' %}">Administración</a> y usa «Cargar cultivos base».{% else %}Pide al administrador que cargue los cultivos del catálogo.{% endif %}</p></div>{% endif %}
-        <label class="field" for="{{ form.superficie_ha.id_for_label }}"><span>Superficie (ha)</span>{{ form.superficie_ha }}{{ form.superficie_ha.errors }}<small>Escríbela, o dibuja tu potrero en el mapa y se calcula sola.{% if form.superficie_ha.field.widget.attrs.max %} <button type="button" class="link-btn" data-fill-available>Usar lo que queda ({{ potrero_superficie_disponible|floatformat:2 }} ha)</button>{% endif %}</small></label>
-        <details class="more-details"
-                 {% if form.variedad.errors or form.fecha_siembra.errors or form.fecha_cosecha.errors %} open{% endif %}><summary>Agregar más detalles</summary>
-            <label class="field"
-                   for="{{ form.variedad.id_for_label }}"><span>Variedad</span>{{ form.variedad }}{{ form.variedad.errors }}</label>
-            <div class="field-pair">
-                <label class="field"
-                       for="{{ form.fecha_siembra.id_for_label }}"><span>Fecha de siembra</span>{{ form.fecha_siembra }}{{ form.fecha_siembra.errors }}</label>
-                <label class="field"
-                       for="{{ form.fecha_cosecha.id_for_label }}"><span>Fecha de cosecha</span>{{ form.fecha_cosecha }}{{ form.fecha_cosecha.errors }}</label>
-            </div>
-        </details>
-        <details class="more-details is-advanced"
-                 {% if form.latitud.errors or form.longitud.errors %} open{% endif %}><summary>Ubicación exacta (avanzado)</summary>
-            <div class="field-pair">
-                <label class="field"
-                       for="{{ form.latitud.id_for_label }}"><span>Latitud</span>{{ form.latitud }}{{ form.latitud.errors }}</label>
-                <label class="field"
-                       for="{{ form.longitud.id_for_label }}"><span>Longitud</span>{{ form.longitud }}{{ form.longitud.errors }}</label>
-            </div>
-        </details>
-    </div>
 {% else %}{% for field in form %}{% if field.is_hidden %}{{ field }}{{ field.errors }}{% else %}<label class="field" for="{{ field.id_for_label }}"><span>{{ field.label }}</span>{{ field }}{{ field.errors }}{% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}</label>{% endif %}{% endfor %}{% endif %}
 {% if is_predio %}
     <section id="map-form-summary"
@@ -224,8 +258,8 @@
         </details>
     </section>
 {% endif %}
-{% if is_predio %}<div class="form-submit-row is-stacked"><button class="btn-primary-agro terrain-submit" type="submit"><i data-lucide="save"></i> Guardar predio</button><p class="save-note"><i data-lucide="lock"></i> Tus datos se guardan de forma privada en tu cuenta.</p><details class="legal-note"><summary>Sobre este registro</summary><p class="privacy-note">Registra únicamente predios que administras o tienes autorización para gestionar. Este trazado no acredita propiedad legal.</p></details></div>{% else %}<div class="form-submit-row is-stacked"><button class="btn-primary-agro terrain-submit" type="submit"><i data-lucide="save"></i> Guardar {{ is_potrero|yesno:'potrero,predio' }}</button></div>{% endif %}</form></section>
+{% if is_predio %}<div class="form-submit-row is-stacked"><button class="btn-primary-agro terrain-submit" type="submit"><i data-lucide="save"></i> Guardar predio</button><p class="save-note"><i data-lucide="lock"></i> Tus datos se guardan de forma privada en tu cuenta.</p><details class="legal-note"><summary>Sobre este registro</summary><p class="privacy-note">Registra únicamente predios que administras o tienes autorización para gestionar. Este trazado no acredita propiedad legal.</p></details></div>{% else %}<div class="form-submit-row is-stacked"><button class="btn-primary-agro terrain-submit" type="submit"><i data-lucide="save"></i> Guardar predio</button></div>{% endif %}</form></section>
 </div>
 {% endif %}
 {% endblock %}
-{% block extra_js %}{% if potrero_sin_espacio %}{% elif is_potrero or is_predio %}{{ maps_config|json_script:'maps-config' }}<script src="{% vendor 'leaflet/leaflet.js' 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js' %}"></script><script src="{% vendor 'leaflet/leaflet-geoman.min.js' 'https://unpkg.com/@geoman-io/leaflet-geoman-free@2.18.0/dist/leaflet-geoman.min.js' %}"></script><script src="{% static 'js/predios-map.js' %}?v=25"></script>{% endif %}{% endblock %}
+{% block extra_js %}{% if potrero_sin_espacio %}{% elif is_potrero or is_predio %}{{ maps_config|json_script:'maps-config' }}<script src="{% vendor 'leaflet/leaflet.js' 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js' %}"></script><script src="{% vendor 'leaflet/leaflet-geoman.min.js' 'https://unpkg.com/@geoman-io/leaflet-geoman-free@2.18.0/dist/leaflet-geoman.min.js' %}"></script><script src="{% static 'js/predios-map.js' %}?v=27"></script>{% endif %}{% endblock %}

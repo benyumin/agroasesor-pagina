@@ -1,0 +1,52 @@
+{% comment %}Una fila de resultado de Buscar. Espera «item» (ver core/search.py).{% endcomment %}
+<li class="result-row tone-{{ item.tone }}">
+    <span class="result-icon" aria-hidden="true"><i data-lucide="{{ item.icon }}"></i></span>
+    <div class="result-main">
+        <div class="result-title-line">
+            <h3 class="result-title">
+                {% if item.primary_action and not item.primary_action.disabled %}
+                    <a href="{{ item.primary_action.url }}">{{ item.title_html }}</a>
+                {% else %}
+                    {{ item.title_html }}
+                {% endif %}
+            </h3>
+            <span class="result-kind">{{ item.kind_label }}</span>
+        </div>
+        {% if item.subtitle %}<p class="result-sub">{{ item.subtitle_html }}</p>{% endif %}
+        {% if item.summary %}<p class="result-summary">{{ item.summary }}</p>{% endif %}
+        {% if item.chips %}
+            <ul class="result-chips">
+                {% for text, tone in item.chips %}<li class="state-chip is-{{ tone }}">{{ text }}</li>{% endfor %}
+            </ul>
+        {% endif %}
+    </div>
+    <div class="result-actions">
+        {% with action=item.primary_action %}
+            {% if action %}
+                {% if action.disabled %}
+                    <span class="result-action is-disabled" aria-disabled="true" title="{{ action.reason }}">{{ action.label }}</span>
+                {% else %}
+                    <a class="btn-secondary-agro btn-sm result-action" href="{{ action.url }}">{{ action.label }} <i data-lucide="arrow-right" aria-hidden="true"></i></a>
+                {% endif %}
+            {% endif %}
+        {% endwith %}
+        {% if item.menu_actions %}
+            <div class="row-menu" data-row-menu>
+                <button type="button"
+                        class="row-menu-trigger"
+                        aria-haspopup="menu"
+                        aria-expanded="false"
+                        aria-label="Más acciones: {{ item.title }}"><span aria-hidden="true">⋯</span></button>
+                <div class="row-menu-list" role="menu">
+                    {% for action in item.menu_actions %}
+                        {% if action.disabled %}
+                            <span class="row-menu-item is-disabled" role="menuitem" aria-disabled="true" title="{{ action.reason }}"><i data-lucide="{{ action.icon }}"></i> {{ action.label }}</span>
+                        {% else %}
+                            <a class="row-menu-item" role="menuitem" href="{{ action.url }}"><i data-lucide="{{ action.icon }}"></i> {{ action.label }}</a>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</li>

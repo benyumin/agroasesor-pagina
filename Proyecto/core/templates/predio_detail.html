@@ -2,7 +2,7 @@
 {% load static %}
 {% block title %}{{ predio.nombre }} · AgroAsesor{% endblock %}
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'css/predios.css' %}?v=27">
+    <link rel="stylesheet" href="{% static 'css/predios.css' %}?v=31">
 {% endblock %}
 {% block content %}
     <nav class="crumbs" aria-label="Dónde estás"><a href="{% url 'predios' %}">Mis predios</a><span aria-hidden="true">›</span>{% if selected_potrero %}<a href="{% url 'predio_detail' predio.pk %}">{{ predio.nombre }}</a><span aria-hidden="true">›</span><span class="is-current" aria-current="page">{{ selected_potrero.nombre }}</span>{% else %}<span class="is-current" aria-current="page">{{ predio.nombre }}</span>{% endif %}</nav>
@@ -27,7 +27,6 @@
 </div>
 </div>
 <div class="detail-head-actions">
-    <a class="btn-ghost-agro" href="{% url 'predios' %}"><i data-lucide="arrow-left"></i> Mis predios</a>
     <a class="btn-secondary-agro"
        href="{% url 'predio_edit' predio.pk %}"><i data-lucide="pencil"></i> Editar predio</a>
     {% if potreros %}<a class="btn-secondary-agro"
@@ -56,56 +55,35 @@
     </div>
 </div>
 </div>
-{% if just_created %}
-    <section class="card use-card" role="status">
-        <div class="use-head">
-            <span class="next-step-icon"><i data-lucide="circle-check"></i></span>
-            <div>
-                <strong class="use-confirm">✓ Predio registrado correctamente</strong>
-                <h2 class="use-title">¿Cómo utilizas este predio?</h2>
-                <p>Ya registraste el límite completo de tu predio. Tu predio ya aparece en Siembra.</p>
-            </div>
+{% if needs_setup %}
+    <section class="card use-card" aria-labelledby="use-title">
+        <div class="use-copy">
+            <h2 class="use-title" id="use-title">¿Cómo deseas organizar tu predio?</h2>
+            <p>Puedes utilizar toda la superficie como un solo potrero o dividirla en sectores para gestionar tus cultivos y actividades agrícolas por separado.</p>
+            <a class="use-later" href="{% url 'predios' %}">Lo haré más tarde</a>
         </div>
         <div class="use-options">
             {% if can_use_whole %}
                 <article class="use-option">
                     <h3><i data-lucide="sprout"></i> Un solo potrero</h3>
-                    <p>Usa esta opción si trabajas todo el predio como una sola área.</p>
-                    <form method="post" action="{% url 'predio_usar_completo' predio.pk %}">
+                    <p>Usa toda la superficie registrada ({{ predio.superficie_ha|floatformat:"-2" }} ha).</p>
+                    <form class="use-form" method="post" action="{% url 'predio_usar_completo' predio.pk %}">
                         {% csrf_token %}
-                        <label class="field" for="use-whole-name">
-                            <span>Nombre del potrero</span><input id="use-whole-name"
-       name="nombre"
-       value="Potrero principal"
-       maxlength="150">
+                        <label class="field use-field" for="use-whole-name">
+                            <span>Nombre del potrero</span>
+                            <input id="use-whole-name" name="nombre" value="Potrero principal" maxlength="150" autocomplete="off">
                         </label>
-                        <button class="btn-primary-agro"
-                                type="submit"><i data-lucide="check"></i> Utilizar todo el predio</button>
+                        <button class="btn-primary-agro" type="submit"><i data-lucide="check"></i> Utilizar todo el predio</button>
                     </form>
                 </article>
             {% endif %}
             <article class="use-option">
                 <h3><i data-lucide="map"></i> Dividir en potreros</h3>
-                <p>Usa esta opción si manejas varios sectores dentro del predio.</p>
+                <p>Define distintos sectores dentro del predio.</p>
                 <a class="{% if can_use_whole %}btn-secondary-agro{% else %}btn-primary-agro{% endif %}"
                    href="{% url 'potrero_create' predio.pk %}"><i data-lucide="split"></i> Dividir mi predio</a>
             </article>
         </div>
-        <dl class="use-help">
-            <div>
-                <dt>Predio</dt>
-                <dd>
-                    Es el terreno o propiedad completa que administras.
-                </dd>
-            </div>
-            <div>
-                <dt>Potrero</dt>
-                <dd>
-                    Es un sector dentro del predio que utilizas para un cultivo o manejo determinado.
-                </dd>
-            </div>
-        </dl>
-        <a class="use-later" href="{% url 'predios' %}">Lo haré más tarde</a>
     </section>
 {% endif %}
 <div class="predio-detail-layout">
@@ -268,7 +246,6 @@
                 </div>
                 <div class="plot-actions">
                     <a class="btn-primary-agro btn-sm" href="{{ ui.primary.url }}">{{ ui.primary.label }}</a>
-                    {% if ui.can_calculate %}<a class="btn-secondary-agro btn-sm" href="{{ ui.tool_actions.1.url }}">Calcular insumos</a><a class="btn-ghost-agro btn-sm" href="{{ ui.tool_actions.2.url }}">Ver si alcanza</a>{% endif %}
                 </div>
                 {% if ui.has_crop %}<span class="plan-meter"><span class="plan-meter-bar" aria-hidden="true">{% for done in ui.plan_steps %}<i{% if done %} class="on"{% endif %}></i>{% endfor %}</span><span class="plan-meter-label">Planificación <strong>{{ ui.plan_done }} de {{ ui.plan_total }}</strong> pasos</span></span>{% endif %}
                 {% if ui.next %}<span class="next-task{% if ui.next.overdue %} is-overdue{% endif %}"><i data-lucide="{{ ui.next.icon }}"></i>Próxima labor · <strong>{{ ui.next.label }}</strong> · {{ ui.next.date }}</span>{% endif %}
@@ -291,9 +268,7 @@
             {% endwith %}
         {% endfor %}
         {% if not farm_card.plots %}
-            <div class="detail-empty-state"><p>Aún no hay potreros asociados a este predio.{% if not just_created %} Sigue el «Siguiente paso» para agregar el primero.{% endif %}</p>{% if can_use_whole and not just_created %}<form method="post"
-      action="{% url 'predio_usar_completo' predio.pk %}"
-      class="inline-use-form">{% csrf_token %}<input type="hidden" name="nombre" value="Potrero principal"><button class="btn-ghost-agro btn-sm" type="submit">¿Trabajas todo el predio como un solo potrero? Utilizar todo el predio</button></form>{% endif %}</div>
+            <div class="detail-empty-state"><p>Aún no hay potreros asociados a este predio.</p></div>
         {% endif %}
         {% if not cultivos %}<p class="muted">Todavía no hay cultivos registrados en sus potreros.</p>{% endif %}
     </section>

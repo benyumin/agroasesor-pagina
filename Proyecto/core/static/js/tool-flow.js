@@ -535,15 +535,15 @@
         if (withSetup) {
           return emptyCard(
             '🗺️',
-            'Tu predio ya está registrado: ¿cómo quieres trabajar este terreno?',
-            'Usa todo el predio como un solo potrero o divídelo en sectores para continuar.',
+            'Aún no tienes potreros',
+            'La comprobación se hace por potrero.',
             [h('a', { class: 'btn-primary-agro btn-sm', href: withSetup.setupUrl }, 'Definir potreros')],
           );
         }
         return emptyCard(
           '🗺️',
-          'Comienza registrando tu predio',
-          'Primero registra tu predio; después defines sus potreros y podrás continuar.',
+          'Aún no tienes predios',
+          'Regístralo para empezar a comprobar.',
           [
             h(
               'a',
@@ -752,23 +752,6 @@
 
   function mountAll() {
     Object.keys(FLOWS).forEach((id) => mountFlow(id, FLOWS[id]));
-    // Indicadores compactos del catálogo (los mismos de «Cuánto llevar»).
-    const seeds = (catalog.semillas || []).length;
-    const active = allProducts.filter((item) => item.active !== false).length;
-    const chips = [
-      ['Cultivos', crops.length],
-      ['Semillas en catálogo', seeds],
-      ['Insumos vigentes', active],
-    ].filter((pair) => Number(pair[1]) > 0);
-    if (catalog.fromDb === false) chips.push(['Fuente', 'Demo local']);
-    document.querySelectorAll('[data-flow-strip]').forEach((strip) => {
-      strip.hidden = !chips.length;
-      strip.replaceChildren(
-        ...chips.map((pair) =>
-          h('div', { class: 'info-chip' }, h('span', null, pair[0]), h('strong', null, String(pair[1]))),
-        ),
-      );
-    });
     // El aviso «Continuar como simulación» lleva a «Cuánto llevar» (ya existente); no se toca aquí.
   }
 

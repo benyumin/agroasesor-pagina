@@ -48,7 +48,6 @@
 
   const $ = (id) => document.getElementById(id);
   const ui = {
-    stats: $('calc-stats'),
     modes: Array.from(root.querySelectorAll('#calc-modes [data-mode]')),
     form: $('calc-form'),
     title: $('calc-title'),
@@ -241,24 +240,7 @@
     return doseUnitLabel(unit).split('/')[0];
   }
 
-  // ---------- indicadores y notas ----------
-  function renderStats() {
-    const seeds = (catalog.semillas || []).length;
-    const active = allProducts.filter((item) => item.active !== false).length;
-    const chips = [
-      ['Cultivos', crops.length],
-      ['Semillas en catálogo', seeds],
-      ['Insumos vigentes', active],
-    ].filter((pair) => Number(pair[1]) > 0);
-    if (catalog.fromDb === false) chips.push(['Fuente', 'Demo local']);
-    ui.stats.hidden = !chips.length;
-    ui.stats.innerHTML = chips
-      .map(
-        (pair) => '<div class="info-chip"><span>' + esc(pair[0]) + '</span><strong>' + esc(pair[1]) + '</strong></div>',
-      )
-      .join('');
-  }
-
+  // ---------- notas ----------
   function productCard(item, crop) {
     const status =
       { verified: 'Verificado con fuente', restricted: 'Restringido', cancelled: 'Registro cancelado' }[
@@ -1002,7 +984,7 @@
       button.classList.toggle('is-active', active);
       button.setAttribute('aria-pressed', String(active));
     });
-    ui.title.textContent = seed ? 'Calcular semillas' : 'Calcular insumo';
+    ui.title.textContent = seed ? 'Calcular semillas' : 'Calcular insumos';
     ui.hint.textContent = seed
       ? 'La densidad sale del cultivo en la base de datos. Ajústala si no vas a sembrar todo el potrero.'
       : 'Elige el producto del catálogo. La dosis de la ficha se copia sola; en productos fitosanitarios la dosis de etiqueta no se puede modificar.';
@@ -1668,7 +1650,6 @@
     crops.map((crop) => ({ value: String(crop.id), label: crop.name })),
     crops.length ? 'Selecciona un cultivo' : 'Sin cultivos en el catálogo',
   );
-  renderStats();
   renderExamples();
   (function start() {
     const requested = productById(requestedProduct);

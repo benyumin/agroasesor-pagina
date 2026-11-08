@@ -2,20 +2,34 @@
 {% load static %}
 {% block title %}{{ report_title }} · Reportes · AgroAsesor{% endblock %}
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'css/reportes.css' %}?v=3">
+    <link rel="stylesheet" href="{% static 'css/reportes.css' %}?v=5">
 {% endblock %}
 {% block content %}
     <div class="page-hero no-print">
         <div>
-            <span class="eyebrow">Generar reporte</span>
             <h1 class="page-title">Reportes del campo</h1>
             <p class="page-sub">Informes listos para imprimir, guardar como PDF o exportar a Excel (CSV), construidos con los registros guardados en tu cuenta.</p>
         </div>
         <div class="toolbar">
+            {% if report_farms %}
             <a class="button secondary" href="?{{ csv_query }}">Descargar CSV</a>
             <button class="button" type="button" onclick="window.print()">Imprimir / guardar PDF</button>
+            {% else %}
+            <button class="button secondary" type="button" disabled aria-describedby="report-empty-help">Descargar CSV</button>
+            <button class="button" type="button" disabled aria-describedby="report-empty-help">Imprimir / guardar PDF</button>
+            {% endif %}
         </div>
     </div>
+    {% if not report_farms %}
+    <section class="card report-start no-print">
+        <div class="empty-state">
+            <span class="empty-state-icon"><i data-lucide="file-text"></i></span>
+            <h3>Todavía no hay nada que reportar</h3>
+            <p id="report-empty-help">Los reportes se arman con tus predios, labores y cálculos guardados. Las descargas se activan en cuanto registres tu primer predio.</p>
+            <a class="btn-primary-agro" href="{% url 'predio_create' %}"><i data-lucide="plus"></i> Registrar primer predio</a>
+        </div>
+    </section>
+    {% else %}
     <nav class="report-types no-print" aria-label="Tipo de reporte">
         {% for key, label, help in report_types %}
             <a class="report-type{% if report_type == key %} is-active{% endif %}"
@@ -204,4 +218,5 @@
             <p>AgroAsesor · {{ generated_at|date:"d/m/Y" }}</p>
         </footer>
     </article>
+    {% endif %}
 {% endblock %}

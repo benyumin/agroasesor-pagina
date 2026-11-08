@@ -2,22 +2,22 @@
 {% load static %}
 {% block title %}Actividades agrícolas · AgroAsesor{% endblock %}
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'css/activities.css' %}?v=5">
+    <link rel="stylesheet" href="{% static 'css/activities.css' %}?v=11">
 {% endblock %}
 {% block content %}
     <div class="page-hero">
         <div>
-            <span class="eyebrow">Planificación y cuaderno de campo.</span>
             <h1 class="page-title">Actividades agrícolas</h1>
             <p class="page-sub">Organiza las labores de tus potreros, controla lo pendiente y registra lo realizado.</p>
         </div>
         <div class="toolbar">
-            <a class="btn-secondary-agro"
-               href="{% url 'reportes' %}?tipo=cuaderno"><i data-lucide="notebook-pen"></i> Cuaderno de campo</a>
-            {% if activities or request.GET %}<a class="btn-primary-agro"
+            {% if activities or request.GET %}<a class="btn-secondary-agro"
+   href="{% url 'reportes' %}?tipo=cuaderno"><i data-lucide="notebook-pen"></i> Cuaderno de campo</a>
+            <a class="btn-primary-agro"
    href="{% url 'actividad_create' %}"><i data-lucide="plus"></i> Programar labor</a>{% endif %}
         </div>
     </div>
+    {% if activities or request.GET %}
     <div class="kpi-row">
         <a class="kpi kpi-pending" href="?estado=pendiente"><i class="kpi-ico" data-lucide="clipboard-list"></i><span>Pendientes</span><strong>{{ activity_stats.pendientes }}</strong><small>por realizar</small></a>
         <a class="kpi kpi-alert" href="?estado=vencida"><i class="kpi-ico" data-lucide="alert-triangle"></i><span>Vencidas</span><strong>{{ activity_stats.vencidas }}</strong><small>fecha ya pasada</small></a>
@@ -25,8 +25,10 @@
            href="?estado=pendiente&amp;desde={{ today|date:'Y-m-d' }}"><i class="kpi-ico" data-lucide="calendar-clock"></i><span>Próximos 7 días</span><strong>{{ activity_stats.proximas }}</strong><small>desde hoy</small></a>
         <a class="kpi kpi-ok" href="?estado=completada"><i class="kpi-ico" data-lucide="circle-check"></i><span>Completadas este mes</span><strong>{{ activity_stats.completadas_mes }}</strong><small>con fecha de realización</small></a>
     </div>
-    <div class="activity-layout">
+    {% endif %}
+    <div class="activity-layout{% if not activities and not request.GET %} is-empty{% endif %}">
         <div class="activity-main">
+            {% if activities or request.GET %}
             <form class="card filter-bar" method="get">
                 <label class="field">
                     <span>Buscar</span><input type="search"
@@ -66,7 +68,9 @@
                 <input type="hidden" name="vista" value="{{ activity_filters.vista }}">
                 <div class="filter-actions"><button class="btn-primary-agro btn-sm" type="submit">Filtrar</button><a class="btn-secondary-agro btn-sm" href="{% url 'actividad_list' %}">Limpiar</a></div>
             </form>
+            {% endif %}
             <section class="card">
+                {% if activities or request.GET %}
                 <div class="section-bar">
                     <h2>{% if activity_filters.vista == "calendario" %}Calendario de {{ calendar_month|date:"F Y" }}{% else %}{{ activities|length }} actividad{{ activities|length|pluralize:"es" }}{% endif %}</h2>
                     <div class="segmented-links" role="group" aria-label="Vista">
@@ -74,6 +78,7 @@
                         <a href="?{% for k, v in request.GET.items %}{% if k != 'vista' %}{{ k }}={{ v|urlencode }}&amp;{% endif %}{% endfor %}vista=calendario" class="{% if activity_filters.vista == 'calendario' %}is-active{% endif %}">Calendario</a>
                     </div>
                 </div>
+                {% endif %}
                 {% if activity_filters.vista == "calendario" %}
                     <div class="month-nav">
                         <a class="btn-secondary-agro btn-sm"
@@ -169,6 +174,7 @@
                 {% endif %}
             </section>
         </div>
+        {% if activities or request.GET or plan_plots %}
         <aside class="activity-aside">
             <section class="card aside-card">
                 <h2>Plan de temporada</h2>
@@ -184,13 +190,13 @@
                         <label class="check">
                             <input type="checkbox" name="incluir_preparacion">
                             Preparación de suelo
-                            <input type="number"
+                            <span class="check-extra"><input type="number"
                                    name="dias_preparacion"
                                    min="1"
                                    max="120"
                                    value="15"
                                    aria-label="Días antes de la siembra">
-                            días antes de la siembra
+                            días antes de la siembra</span>
                         </label>
                         <label class="check">
                             <input type="checkbox" name="incluir_siembra" checked>
@@ -198,14 +204,14 @@
                         </label>
                         <label class="check">
                             <input type="checkbox" name="incluir_monitoreo">
-                            Monitoreo cada
-                            <input type="number"
+                            Monitoreo periódico
+                            <span class="check-extra">cada <input type="number"
                                    name="frecuencia_monitoreo"
                                    min="1"
                                    max="60"
                                    value="14"
                                    aria-label="Frecuencia en días">
-                            días hasta la cosecha
+                            días hasta la cosecha</span>
                         </label>
                         <label class="check">
                             <input type="checkbox" name="incluir_cosecha" checked>
@@ -218,12 +224,15 @@
                     <p class="muted">Registra un potrero para usar el plan de temporada.</p>
                 {% endif %}
             </section>
+            {% if activities or request.GET %}
             <section class="card aside-card">
                 <h2>Tipos de labor</h2>
                 <ul class="legend-list">
                     {% for value, label in activity_types %}<li class="type-{{ value }}"><span class="type-icon">{% include "partials/activity_icon.html" with tipo=value %}</span>{{ label }}</li>{% endfor %}
                 </ul>
             </section>
+            {% endif %}
         </aside>
+        {% endif %}
     </div>
 {% endblock %}

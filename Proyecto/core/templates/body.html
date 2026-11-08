@@ -9,7 +9,7 @@
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="{% vendor 'fonts/source-sans-3.css' 'https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap' %}"
               rel="stylesheet">
-        <link rel="stylesheet" href="{% static 'css/body.css' %}?v=5">
+        <link rel="stylesheet" href="{% static 'css/body.css' %}?v=10">
         {% if current == "predios" %}
             <link rel="stylesheet"
                   href="{% vendor 'leaflet/leaflet.css' 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css' %}">
@@ -79,6 +79,8 @@
                             <button class="icon-button"
                                     type="button"
                                     data-notes
+                                    aria-haspopup="true"
+                                    aria-expanded="false"
                                     aria-label="Notificaciones">
                                 <i data-lucide="bell"></i>
                                 {% if pending_activities %}<i class="note-dot"></i>{% endif %}
@@ -97,6 +99,8 @@
                             <button class="profile"
                                     type="button"
                                     data-profile
+                                    aria-haspopup="true"
+                                    aria-expanded="false"
                                     aria-label="Menú de perfil">
                                 <span class="avatar">{{ initials }}</span>
                                 <span class="profile-info">
@@ -120,7 +124,8 @@
                         {% for message in messages %}<p class="callout" role="status">{{ message }}</p>{% endfor %}
                         {% if perfil_incompleto %}<p class="callout" role="status">Completa tu perfil con tu teléfono y tu comuna para terminar tu registro. <a class="text-link" href="{% url 'perfil' %}">Completar ahora</a></p>{% endif %}
                         {% if not phase_a %}<p class="callout">Módulo pendiente de consolidación. Verifica las dosis con una fuente técnica antes de utilizarlas.</p>{% endif %}
-                        {% if journey %}
+                        {% comment %}Sin predios no hay ruta que seguir: cada pantalla ya ofrece su único «Registrar predio».{% endcomment %}
+                        {% if journey and journey.steps.0.state != 'current' %}
                             {% include "partials/journey.html" %}
                         {% endif %}
                         {% block content %}{% endblock %}
@@ -137,7 +142,7 @@
         {% if crop_picker %}{{ crop_picker|json_script:"agro-crop-picker" }}{% endif %}
         {{ request.user.pk|json_script:"agro-user-id" }}
         <script src="{% static 'js/row-menu.js' %}?v=2"></script>
-        <script src="{% static 'js/layout.js' %}"></script>
+        <script src="{% static 'js/layout.js' %}?v=3"></script>
         {# Los íconos se cargan sin bloquear la página: si internet va lento, los menús y botones funcionan igual y los íconos aparecen al llegar. #}
         <script async
                 src="{% vendor 'lucide.min.js' 'https://unpkg.com/lucide@0.468.0/dist/umd/lucide.js' %}"

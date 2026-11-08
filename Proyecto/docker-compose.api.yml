@@ -1,15 +1,8 @@
-# OPCIONAL: añade la API Flask (solo lectura) detrás de Django.
-# Uso:   docker compose -f docker-compose.yml -f docker-compose.api.yml up -d --build
-# Sin este archivo AgroAsesor funciona exactamente igual que antes (/api/v1/ responde 503 «no configurada»).
-#
-# Requiere AGROASESOR_INTERNAL_SECRET (≥ 32 caracteres) en el archivo .env (ver .env.example).
-# La API NO publica puertos hacia tu PC: solo Django la alcanza por la red interna de Docker.
-# La base oficial se monta ahí en SOLO LECTURA (:ro): la API no puede modificarla.
 services:
   agroasesor:
     environment:
       AGROASESOR_API_URL: http://api:5050
-      AGROASESOR_INTERNAL_SECRET: ${AGROASESOR_INTERNAL_SECRET:?Define AGROASESOR_INTERNAL_SECRET en .env (mínimo 32 caracteres)}
+      AGROASESOR_INTERNAL_SECRET: ${AGROASESOR_INTERNAL_SECRET:?Define AGROASESOR_INTERNAL_SECRET en .env}
     depends_on:
       - api
 
@@ -20,10 +13,8 @@ services:
     environment:
       APP_HOST: "0.0.0.0"
       APP_PORT: "5050"
-      AGROASESOR_DB_PATH: /data/db.sqlite3
-      AGROASESOR_INTERNAL_SECRET: ${AGROASESOR_INTERNAL_SECRET:?Define AGROASESOR_INTERNAL_SECRET en .env (mínimo 32 caracteres)}
-    volumes:
-      - agroasesor_data:/data:ro
+      AGROASESOR_READONLY_DATABASE_URL: ${AGROASESOR_READONLY_DATABASE_URL:?Define AGROASESOR_READONLY_DATABASE_URL en .env}
+      AGROASESOR_INTERNAL_SECRET: ${AGROASESOR_INTERNAL_SECRET:?Define AGROASESOR_INTERNAL_SECRET en .env}
     expose:
       - "5050"
     restart: unless-stopped

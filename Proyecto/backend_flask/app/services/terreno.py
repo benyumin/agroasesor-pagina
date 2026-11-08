@@ -14,6 +14,8 @@ from app.services.unidades import superficie_dual
 def _json(texto, defecto):
     if texto in (None, ""):
         return defecto
+    if isinstance(texto, (dict, list)):
+        return texto
     try:
         return json.loads(texto)
     except (TypeError, ValueError):
@@ -33,7 +35,7 @@ def perfil_usuario(usuario_id):
     con = abrir_bd()
     fila = con.execute(
         "SELECT u.id, u.username, u.email, u.is_staff, u.is_active, a.nombre, a.telefono, a.comuna, a.rut "
-        "FROM auth_user u LEFT JOIN core_agricultor a ON a.user_id = u.id WHERE u.id = ?",
+        "FROM auth_user u LEFT JOIN core_agricultor a ON a.user_id = u.id WHERE u.id = %s",
         (usuario_id,),
     ).fetchone()
     if fila is None or not fila["is_active"]:
@@ -53,7 +55,7 @@ def perfil_usuario(usuario_id):
 
 # ---- catálogos -----------------------------------------------------------------------------------------
 def listar_zonas():
-    filas = abrir_bd().execute("SELECT id, nombre, descripcion FROM core_zona WHERE activo = 1 ORDER BY nombre")
+    filas = abrir_bd().execute("SELECT id, nombre, descripcion FROM core_zona WHERE activo IS TRUE ORDER BY nombre")
     return [dict(f) for f in filas]
 
 
@@ -82,12 +84,12 @@ def _cultivo(f):
 
 
 def listar_cultivos():
-    filas = abrir_bd().execute("SELECT * FROM core_cultivo WHERE activo = 1 ORDER BY nombre")
+    filas = abrir_bd().execute("SELECT * FROM core_cultivo WHERE activo IS TRUE ORDER BY nombre")
     return [_cultivo(f) for f in filas]
 
 
 def obtener_cultivo(cultivo_id):
-    fila = abrir_bd().execute("SELECT * FROM core_cultivo WHERE id = ? AND activo = 1", (cultivo_id,)).fetchone()
+    fila = abrir_bd().execute("SELECT * FROM core_cultivo WHERE id = %s AND activo IS TRUE", (cultivo_id,)).fetchone()
     if fila is None:
         raise ApiError(404, "NO_ENCONTRADO", "Cultivo no encontrado.")
     return _cultivo(fila)
@@ -123,13 +125,13 @@ def _insumo(f):
 
 
 def listar_insumos(tipo=None, cultivo_id=None):
-    sql = f"SELECT {_CAMPOS_INSUMO} FROM core_insumo i JOIN core_tipoinsumo t ON t.id = i.tipo_id WHERE i.vigente = 1"
+    sql = f"SELECT {_CAMPOS_INSUMO} FROM core_insumo i JOIN core_tipoinsumo t ON t.id = i.tipo_id WHERE i.vigente IS TRUE"
     args = []
     if tipo:
-        sql += " AND t.nombre = ?"
+        sql += " AND t.nombre = %s"
         args.append(tipo)
     if cultivo_id:
-        sql += " AND i.cultivo_id = ?"
+        sql += " AND i.cultivo_id = %s"
         args.append(cultivo_id)
     return [_insumo(f) for f in abrir_bd().execute(sql + " ORDER BY i.nombre", args)]
 
@@ -139,7 +141,7 @@ def obtener_insumo(insumo_id):
         abrir_bd()
         .execute(
             f"SELECT {_CAMPOS_INSUMO} FROM core_insumo i JOIN core_tipoinsumo t ON t.id = i.tipo_id "
-            "WHERE i.id = ? AND i.vigente = 1",
+            "WHERE i.id = %s AND i.vigente IS TRUE",
             (insumo_id,),
         )
         .fetchone()
@@ -169,7 +171,7 @@ def listar_predios(usuario):
         abrir_bd()
         .execute(
             "SELECT p.*, (SELECT COUNT(*) FROM core_potrero q WHERE q.predio_id = p.id) AS n "
-            "FROM core_predio p WHERE p.propietario_id = ? ORDER BY p.nombre",
+            "FROM core_predio p WHERE p.propietario_id = %s ORDER BY p.nombre",
             (usuario.id,),
         )
         .fetchall()
@@ -180,7 +182,7 @@ def listar_predios(usuario):
 def _predio_propio(predio_id, usuario):
     fila = (
         abrir_bd()
-        .execute("SELECT * FROM core_predio WHERE id = ? AND propietario_id = ?", (predio_id, usuario.id))
+        .execute("SELECT * FROM core_predio WHERE id = %s AND propietario_id = %s", (predio_id, usuario.id))
         .fetchone()
     )
     if fila is None:
@@ -190,7 +192,7 @@ def _predio_propio(predio_id, usuario):
 
 def obtener_predio(predio_id, usuario):
     fila = _predio_propio(predio_id, usuario)
-    n = abrir_bd().execute("SELECT COUNT(*) FROM core_potrero WHERE predio_id = ?", (predio_id,)).fetchone()[0]
+    n = abrir_bd().execute("SELECT COUNT(*) AS total FROM core_potrero WHERE predio_id = %s", (predio_id,)).fetchone()["total"]
     return _predio(fila, n)
 
 
@@ -222,14 +224,14 @@ _SQL_POTRERO = (
 
 def listar_potreros(predio_id, usuario):
     _predio_propio(predio_id, usuario)
-    filas = abrir_bd().execute(_SQL_POTRERO + "WHERE q.predio_id = ? ORDER BY q.nombre", (predio_id,))
+    filas = abrir_bd().execute(_SQL_POTRERO + "WHERE q.predio_id = %s ORDER BY q.nombre", (predio_id,))
     return [_potrero(f) for f in filas]
 
 
 def obtener_potrero(potrero_id, usuario):
     fila = (
         abrir_bd()
-        .execute(_SQL_POTRERO + "WHERE q.id = ? AND p.propietario_id = ?", (potrero_id, usuario.id))
+        .execute(_SQL_POTRERO + "WHERE q.id = %s AND p.propietario_id = %s", (potrero_id, usuario.id))
         .fetchone()
     )
     if fila is None:
@@ -241,13 +243,13 @@ def historial_calculos(usuario, potrero_id=None, limite=50):
     sql = (
         "SELECT c.id, c.operacion, c.entrada, c.resultado, c.creado, c.potrero_id, q.nombre AS potrero "
         "FROM core_calculoagricola c JOIN core_potrero q ON q.id = c.potrero_id "
-        "WHERE c.usuario_id = ?"
+        "WHERE c.usuario_id = %s"
     )
     args = [usuario.id]
     if potrero_id:
-        sql += " AND c.potrero_id = ?"
+        sql += " AND c.potrero_id = %s"
         args.append(potrero_id)
-    sql += " ORDER BY c.creado DESC, c.id DESC LIMIT ?"
+    sql += " ORDER BY c.creado DESC, c.id DESC LIMIT %s"
     args.append(limite)
     return [
         {

@@ -1,46 +1,232 @@
 {% extends "body.html" %}
 {% load static %}
-{% block title %}Búsqueda · AgroAsesor{% endblock %}
+{% block title %}Buscar · AgroAsesor{% endblock %}
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'css/busqueda.css' %}">
+    <link rel="stylesheet" href="{% static 'css/busqueda.css' %}?v=4">
 {% endblock %}
 {% block content %}
-    <div class="page-hero">
-        <div>
-            <h1 class="page-title">Buscar</h1>
-            <p class="page-sub">Predios, cultivos, semillas e insumos de tu catálogo. Escribe parte del nombre: “mai” encuentra Maíz.</p>
+    <section class="search-hero" aria-labelledby="search-title">
+        <div class="search-hero-text">
+            <h1 id="search-title" class="page-title">Buscar</h1>
+            <p>Cultivos, semillas, insumos, problemas agrícolas y tus predios. Escribe parte del nombre: «mai» encuentra Maíz.</p>
         </div>
-    </div>
-    <form class="card" id="search-form">
-        <div class="grid-2">
-            <label class="field">
-                <span>Buscar</span><input id="term"
-       value="{{ query }}"
-       placeholder="Nombre de un predio, cultivo o insumo…">
-            </label>
-            <label class="field">
-                <span>Cultivo</span><select id="crop">
-                    <option value="">Todos</option>
-                </select>
-            </label>
-            <label class="field">
-                <span>Problema</span><select id="problem">
-                    <option value="">Todos</option>
-                </select>
-            </label>
-            <label class="field">
-                <span>Tipo de insumo</span><select id="type">
-                    <option value="">Todos</option>
-                </select>
-            </label>
+        <form class="search-form" id="search-form" action="{% url 'busqueda' %}" method="get" role="search">
+            {% if search_tab != 'todos' %}<input type="hidden" name="tab" value="{{ search_tab }}">{% endif %}
+            <div class="search-box">
+                <i data-lucide="search" aria-hidden="true"></i>
+                <label class="sr-only" for="search-input">Buscar en AgroAsesor</label>
+                <input id="search-input"
+                       type="search"
+                       name="q"
+                       value="{{ search_query }}"
+                       maxlength="80"
+                       autocomplete="off"
+                       placeholder="Busca por nombre…"
+                       {% if not search_query %}autofocus{% endif %}>
+                {% if search_query %}
+                    <a class="search-clear"
+                       href="{% if search_tab != 'todos' %}{% url 'busqueda' %}?tab={{ search_tab }}{% else %}{% url 'busqueda' %}{% endif %}"
+                       aria-label="Borrar la búsqueda"><i data-lucide="x" aria-hidden="true"></i></a>
+                {% endif %}
+                <button class="btn-primary-agro" type="submit">Buscar</button>
+            </div>
+        </form>
+        {% if search_mode == 'explore' and search_explore.examples %}
+            <p class="search-examples" id="search-examples">
+                <span>Por ejemplo:</span>
+                {% for text in search_explore.examples %}
+                    <a class="example-chip" href="{% url 'busqueda' %}?q={{ text|urlencode }}">{{ text }}</a>
+                {% endfor %}
+            </p>
+        {% endif %}
+    </section>
+    <nav class="search-tabs" aria-label="Categorías de búsqueda">
+        {% for tab in search_tabs %}
+            <a class="search-tab{% if tab.active %} is-active{% endif %}{% if not tab.count %} is-empty{% endif %}"
+               href="{{ tab.url }}"
+               {% if tab.active %}aria-current="page"{% endif %}>
+                <i data-lucide="{{ tab.icon }}" aria-hidden="true"></i>
+                <span>{{ tab.label }}</span>
+                <b>{{ tab.count }}</b>
+            </a>
+        {% endfor %}
+    </nav>
+    {% if search_mode != 'explore' and search_total or search_active_filters %}
+        <div class="search-toolbar">
+            <div class="search-filters">
+                {% for field in search_filter_fields %}
+                    {% if field == 'cultivo' %}
+                        <label class="sf">
+                            <span>Cultivo</span>
+                            <select name="cultivo" form="search-form" data-autosubmit>
+                                <option value="">Todos</option>
+                                {% for value, name in search_filter_options.cultivo %}
+                                    <option value="{{ value }}" {% if search_filters.cultivo == value %}selected{% endif %}>{{ name }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                    {% elif field == 'grupo' %}
+                        <label class="sf">
+                            <span>Grupo</span>
+                            <select name="grupo" form="search-form" data-autosubmit>
+                                <option value="">Todos</option>
+                                {% for value, name in search_filter_options.grupo %}
+                                    <option value="{{ value }}" {% if search_filters.grupo == value %}selected{% endif %}>{{ name }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                    {% elif field == 'categoria' %}
+                        <label class="sf">
+                            <span>Tipo de insumo</span>
+                            <select name="categoria" form="search-form" data-autosubmit>
+                                <option value="">Todos</option>
+                                {% for value, name in search_filter_options.categoria %}
+                                    <option value="{{ value }}" {% if search_filters.categoria == value %}selected{% endif %}>{{ name }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                    {% elif field == 'problema' %}
+                        <label class="sf">
+                            <span>Problema</span>
+                            <select name="problema" form="search-form" data-autosubmit>
+                                <option value="">Todos</option>
+                                {% for value, name in search_filter_options.problema %}
+                                    <option value="{{ value }}" {% if search_filters.problema == value %}selected{% endif %}>{{ name }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                    {% elif field == 'tipo' %}
+                        <label class="sf">
+                            <span>Tipo de problema</span>
+                            <select name="tipo" form="search-form" data-autosubmit>
+                                <option value="">Todos</option>
+                                {% for value, name in search_filter_options.tipo %}
+                                    <option value="{{ value }}" {% if search_filters.tipo == value %}selected{% endif %}>{{ name }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                    {% elif field == 'calculables' %}
+                        <label class="sf sf-check">
+                            <input type="checkbox" name="calculables" value="1" form="search-form" data-autosubmit {% if search_filters.calculables %}checked{% endif %}>
+                            <span>Solo con cálculo disponible</span>
+                        </label>
+                    {% endif %}
+                {% endfor %}
+                {% if search_active_filters %}
+                    <a class="search-reset" href="{{ search_clear_url }}"><i data-lucide="x" aria-hidden="true"></i> Limpiar filtros</a>
+                {% endif %}
+            </div>
+            <noscript><button class="btn-secondary-agro btn-sm" type="submit" form="search-form">Aplicar filtros</button></noscript>
         </div>
-        <div class="example-row"
-             id="search-examples"
-             aria-label="Ejemplos de tu catálogo"></div>
-        <button class="button" type="submit">Buscar</button>
-    </form>
-    <div id="results" class="results"></div>
+        <div class="search-summary" role="status" aria-live="polite">
+            <p>
+                <strong>{{ search_total }}</strong> resultado{{ search_total|pluralize }}
+                {% if search_query %}para «<span class="q">{{ search_query }}</span>»{% elif search_mode == 'list' %}en {{ search_tab_label|lower }}{% endif %}
+            </p>
+            {% if search_mode == 'list' and search_has_query and search_total > 1 %}
+                <label class="sf sf-sort">
+                    <span>Ordenar</span>
+                    <select name="orden" form="search-form" data-autosubmit>
+                        <option value="relevancia" {% if search_order == 'relevancia' %}selected{% endif %}>Más relevantes</option>
+                        <option value="nombre" {% if search_order == 'nombre' %}selected{% endif %}>Nombre (A–Z)</option>
+                    </select>
+                </label>
+            {% endif %}
+        </div>
+    {% endif %}
+    {% if search_mode == 'explore' %}
+        <section class="explore" aria-labelledby="explore-title">
+            <h2 id="explore-title" class="explore-title">Explora por categoría</h2>
+            <div class="explore-grid">
+                {% for cat in search_explore.categories %}
+                    <article class="explore-card tone-{{ cat.key }}">
+                        <header>
+                            <span class="explore-icon" aria-hidden="true"><i data-lucide="{{ cat.icon }}"></i></span>
+                            <div>
+                                <h3>{{ cat.title }}</h3>
+                                <p>{{ cat.text }}</p>
+                            </div>
+                            <strong class="explore-count" aria-label="{{ cat.count }} registrados">{{ cat.count }}</strong>
+                        </header>
+                        {% if cat.chips %}
+                            <ul class="explore-chips">
+                                {% for chip in cat.chips %}
+                                    <li><a href="{{ chip.url }}">{{ chip.label }} <b>{{ chip.count }}</b></a></li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                        <a class="explore-link" href="{{ cat.url }}">{% if cat.cta %}{{ cat.cta }}{% else %}Ver {{ cat.title|lower }}{% endif %} <i data-lucide="arrow-right" aria-hidden="true"></i></a>
+                    </article>
+                {% endfor %}
+                {% if search_explore.crops_in_use %}
+                    <article class="explore-card tone-enuso">
+                        <header>
+                            <span class="explore-icon" aria-hidden="true"><i data-lucide="sprout"></i></span>
+                            <div>
+                                <h3>En tus potreros</h3>
+                                <p>Cultivos que ya tienes asignados. Toca uno para buscarlo.</p>
+                            </div>
+                        </header>
+                        <ul class="explore-chips">
+                            {% for crop in search_explore.crops_in_use %}
+                                <li><a href="{{ crop.url }}">{{ crop.name }} <b>{{ crop.count }}</b></a></li>
+                            {% endfor %}
+                        </ul>
+                    </article>
+                {% endif %}
+            </div>
+        </section>
+    {% elif search_total == 0 %}
+        <section class="search-empty">
+            <span class="search-empty-icon" aria-hidden="true"><i data-lucide="search-x"></i></span>
+            <div>
+                {% if search_query %}
+                    <h2>Sin resultados para «{{ search_query }}»</h2>
+                    <p>Revisa la ortografía, usa solo parte del nombre o prueba en otra categoría.
+                        {% if search_active_filters %}Hay filtros activos que pueden estar limitando la búsqueda.{% endif %}</p>
+                {% elif search_active_filters %}
+                    <h2>Ningún resultado con estos filtros</h2>
+                    <p>Prueba con otro valor o quita los filtros para ver todo.</p>
+                {% elif search_tab == 'predios' %}
+                    <h2>Aún no tienes predios registrados</h2>
+                    <p>Cuando registres un predio y sus potreros, podrás encontrarlos aquí.</p>
+                {% else %}
+                    <h2>No hay registros en esta categoría</h2>
+                    <p>El catálogo todavía no tiene datos para mostrar aquí.</p>
+                {% endif %}
+                <p class="search-empty-actions">
+                    {% if search_active_filters %}<a class="btn-secondary-agro btn-sm" href="{{ search_clear_url }}">Limpiar filtros</a>{% endif %}
+                    {% if search_tab == 'predios' and not search_query and not search_active_filters %}<a class="btn-primary-agro btn-sm" href="{% url 'predio_create' %}">Registrar predio</a>{% endif %}
+                    {% if search_query and search_tab != 'todos' %}<a class="btn-secondary-agro btn-sm" href="{% url 'busqueda' %}?q={{ search_query|urlencode }}">Buscar en todas las categorías</a>{% endif %}
+                    {% if search_query %}<a class="text-link" href="{% url 'decisiones' %}?herramienta=llevar&tipo=insumos">¿Buscas un producto que no está? Calcula a mano (queda marcado como simulación)</a>{% endif %}
+                </p>
+            </div>
+        </section>
+    {% elif search_mode == 'sections' %}
+        {% for section in search_sections %}
+            <section class="result-section" aria-labelledby="sec-{{ section.key }}">
+                <header class="result-section-head">
+                    <h2 id="sec-{{ section.key }}"><i data-lucide="{{ section.icon }}" aria-hidden="true"></i> {{ section.label }} <span>{{ section.total }}</span></h2>
+                    {% if section.more_url %}<a class="text-link" href="{{ section.more_url }}">Ver los {{ section.total }} <i data-lucide="arrow-right" aria-hidden="true"></i></a>{% endif %}
+                </header>
+                <ul class="result-list">
+                    {% for item in section.items %}{% include "partials/search_result.html" %}{% endfor %}
+                </ul>
+            </section>
+        {% endfor %}
+    {% else %}
+        <ul class="result-list">
+            {% for item in search_items %}{% include "partials/search_result.html" %}{% endfor %}
+        </ul>
+        {% if search_page.paginator.num_pages > 1 %}
+            <nav class="search-pager" aria-label="Paginación de resultados">
+                {% if search_page.has_previous %}<a class="btn-secondary-agro btn-sm" href="?{{ search_page_query }}&amp;pagina={{ search_page.previous_page_number }}" rel="prev">← Anterior</a>{% else %}<span class="btn-secondary-agro btn-sm is-disabled" aria-disabled="true">← Anterior</span>{% endif %}
+                <span>Página {{ search_page.number }} de {{ search_page.paginator.num_pages }}</span>
+                {% if search_page.has_next %}<a class="btn-secondary-agro btn-sm" href="?{{ search_page_query }}&amp;pagina={{ search_page.next_page_number }}" rel="next">Siguiente →</a>{% else %}<span class="btn-secondary-agro btn-sm is-disabled" aria-disabled="true">Siguiente →</span>{% endif %}
+            </nav>
+        {% endif %}
+    {% endif %}
 {% endblock %}
 {% block extra_js %}
-    <script src="{% static 'js/busqueda.js' %}?v=3"></script>
+    <script src="{% static 'js/busqueda.js' %}?v=4"></script>
 {% endblock %}

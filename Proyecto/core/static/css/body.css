@@ -4,13 +4,13 @@
     --ink: #1e2a22;
     --muted: #5d6b62;
     --line: #e3e8e1;
-    --green: #3d7a4a;
+    --green: #356b40;
     --green-dark: #1e3d28;
     --green-soft: #e7f1e6;
     --green-light: #7cb07a;
     --amber: #c9a227;
     --amber-soft: #f8efd4;
-    --red: #b54a3c;
+    --red: #a43d30;
     --blue: #3d6e8c;
     --blue-soft: #e4eef4;
     --radius: 16px;
@@ -1405,7 +1405,7 @@ main>.page-container>.callout {
 }
 
 .sidebar .nav-sublink.is-active {
-    background: var(--leaf);
+    background: #2a7a47;
     color: #fff;
     font-weight: 700;
     border-color: transparent;
@@ -1445,6 +1445,12 @@ main>.page-container>.callout {
 .sidebar .nav-sublink {
     padding: 8px 10px;
     font-size: 0.93rem;
+}
+
+/* Objetivos táctiles de al menos 44 px en todo el menú lateral. */
+.sidebar .nav-link,
+.sidebar .nav-sublink {
+    min-height: 44px;
 }
 
 /* Íconos: mismo tamaño aunque aún no hayan cargado, para que la página no «salte». */
@@ -2262,4 +2268,64 @@ i[data-lucide="check"]:empty::before {
 .adm-links a:hover {
     background: var(--green);
     color: #fff;
+}
+
+/* ---------- Accesibilidad: objetivos táctiles de 44 px ---------- */
+.btn-primary-agro,
+.btn-secondary-agro,
+.btn-ghost-agro,
+.button,
+.journey-btn,
+.search-tab {
+    min-height: 44px;
+}
+
+.journey-btn,
+.search-tab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.icon-button {
+    min-width: 44px;
+    min-height: 44px;
+}
+
+/* Los botones de solo ícono conservan su tamaño visual, pero su zona de pulsación llega a 44 px. */
+.icon-btn,
+.row-menu-trigger,
+.activity-check,
+.search-clear {
+    position: relative;
+}
+
+.icon-btn::after,
+.row-menu-trigger::after,
+.activity-check::after,
+.search-clear::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+}
+
+/* ---------- Accesibilidad: foco de teclado siempre visible ---------- */
+.sidebar .nav-link:focus-visible,
+.sidebar .nav-sublink:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: -3px;
+}
+
+.global-search:focus-within {
+    border-color: var(--green);
+    box-shadow: 0 0 0 3px rgba(53, 107, 64, .3);
+}
+
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 2px solid var(--green);
+    outline-offset: 2px;
 }

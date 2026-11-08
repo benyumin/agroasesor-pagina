@@ -2,31 +2,155 @@
 {% load static %}
 {% block title %}Mi perfil · AgroAsesor{% endblock %}
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'css/activities.css' %}?v=5">
+    <link rel="stylesheet" href="{% static 'css/activities.css' %}?v=11">
 {% endblock %}
 {% block content %}
-    <div class="page-hero">
-        <div>
-            <h1 class="page-title">Mi perfil</h1>
-            <p class="page-sub">{% if tiene_ficha %}Estos son los datos de contacto de tu cuenta ({{ user.email }}).{% else %}Completa tu teléfono y tu comuna para terminar tu registro como agricultor.{% endif %}</p>
+    {% with a=form.initial.nombre_completo|yesno:"1,0" b=form.initial.telefono|yesno:"1,0" c=form.initial.comuna|yesno:"1,0" %}
+    {% with hechos=a|add:b|add:c %}
+    {% widthratio hechos 3 100 as pct %}
+    <div class="perfil-page">
+        <nav class="perfil-crumbs" aria-label="Dónde estás">
+            <a href="{% url 'dashboard' %}" aria-label="Ir al inicio"><i data-lucide="house" aria-hidden="true"></i></a>
+            <span aria-hidden="true">/</span>
+            <span aria-current="page">Mi perfil</span>
+        </nav>
+
+        <header class="perfil-hero">
+            <div class="perfil-hero-main">
+                <div class="perfil-avatar-wrap">
+                    <span class="perfil-avatar" aria-hidden="true">{{ initials }}</span>
+                    <a class="perfil-avatar-edit" href="#perfil-datos" aria-label="Ir a editar mis datos"><i data-lucide="pencil" aria-hidden="true"></i></a>
+                </div>
+                <div class="perfil-id">
+                    <div class="perfil-name-row">
+                        <h1 class="page-title">{{ user.name }}</h1>
+                        <span class="perfil-role"><i data-lucide="sprout" aria-hidden="true"></i>{{ user.role }}</span>
+                    </div>
+                    <p class="perfil-mail"><i data-lucide="mail" aria-hidden="true"></i>{{ user.email }}</p>
+                    {% if form.initial.comuna or form.initial.telefono %}
+                    <ul class="perfil-chips">
+                        {% if form.initial.comuna %}<li><i data-lucide="map-pin" aria-hidden="true"></i>{{ form.initial.comuna }}</li>{% endif %}
+                        {% if form.initial.telefono %}<li><i data-lucide="phone" aria-hidden="true"></i>{{ form.initial.telefono }}</li>{% endif %}
+                    </ul>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="perfil-progress" role="group" aria-label="Avance del perfil">
+                <span class="perfil-progress-ico{% if pct != "100" %} is-pending{% endif %}"><i data-lucide="{% if pct == "100" %}check{% else %}user-round-pen{% endif %}" aria-hidden="true"></i></span>
+                <div>
+                    <span class="perfil-progress-label">{% if pct == "100" %}Perfil completo{% else %}Perfil por completar{% endif %}</span>
+                    <strong>{{ pct }} %</strong>
+                    <div class="perfil-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ pct }}"><span style="width: {{ pct }}%"></span></div>
+                </div>
+            </div>
+        </header>
+
+        <div class="perfil-grid">
+            <section class="perfil-card perfil-form-card" aria-labelledby="perfil-datos">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    <div class="perfil-section-head">
+                        <span class="perfil-ico"><i data-lucide="user" aria-hidden="true"></i></span>
+                        <div>
+                            <h2 id="perfil-datos">Datos personales</h2>
+                            <p>Información básica de tu perfil en AgroAsesor.</p>
+                        </div>
+                    </div>
+                    {% if not tiene_ficha %}<p class="callout">Completa tu teléfono y tu comuna para terminar tu registro como agricultor.</p>{% endif %}
+                    {% if form.non_field_errors %}<div class="alert" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+
+                    <div class="perfil-fields">
+                        <div class="field{% if form.nombre_completo.errors %} has-error{% endif %}">
+                            <label for="{{ form.nombre_completo.id_for_label }}">{{ form.nombre_completo.label }}{% if form.nombre_completo.field.required %} <span class="req" aria-hidden="true">*</span>{% endif %}</label>
+                            <div class="perfil-input">
+                                <i class="perfil-input-ico" data-lucide="user" aria-hidden="true"></i>
+                                {{ form.nombre_completo }}
+                            </div>
+                            {% if form.nombre_completo.help_text %}<small class="help">{{ form.nombre_completo.help_text }}</small>{% endif %}
+                            {% for error in form.nombre_completo.errors %}<small class="error" role="alert">{{ error }}</small>{% endfor %}
+                        </div>
+                        <div class="field{% if form.rut.errors %} has-error{% endif %}">
+                            <label for="{{ form.rut.id_for_label }}">{{ form.rut.label }}{% if form.rut.field.required %} <span class="req" aria-hidden="true">*</span>{% endif %}</label>
+                            <div class="perfil-input">
+                                <i class="perfil-input-ico" data-lucide="id-card" aria-hidden="true"></i>
+                                {{ form.rut }}
+                            </div>
+                            {% if form.rut.help_text %}<small class="help">{{ form.rut.help_text }}</small>{% endif %}
+                            {% for error in form.rut.errors %}<small class="error" role="alert">{{ error }}</small>{% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="perfil-section-head perfil-section-next">
+                        <span class="perfil-ico"><i data-lucide="phone" aria-hidden="true"></i></span>
+                        <div>
+                            <h2>Contacto</h2>
+                            <p>Medios de contacto para comunicaciones y soporte.</p>
+                        </div>
+                    </div>
+                    <div class="perfil-fields">
+                        <div class="field{% if form.telefono.errors %} has-error{% endif %}">
+                            <label for="{{ form.telefono.id_for_label }}">{{ form.telefono.label }}{% if form.telefono.field.required %} <span class="req" aria-hidden="true">*</span>{% endif %}</label>
+                            <div class="perfil-input">
+                                <i class="perfil-input-ico" data-lucide="phone" aria-hidden="true"></i>
+                                {{ form.telefono }}
+                            </div>
+                            {% if form.telefono.help_text %}<small class="help">{{ form.telefono.help_text }}</small>{% endif %}
+                            {% for error in form.telefono.errors %}<small class="error" role="alert">{{ error }}</small>{% endfor %}
+                        </div>
+                        <div class="field{% if form.comuna.errors %} has-error{% endif %}">
+                            <label for="{{ form.comuna.id_for_label }}">{{ form.comuna.label }}{% if form.comuna.field.required %} <span class="req" aria-hidden="true">*</span>{% endif %}</label>
+                            <div class="perfil-input">
+                                <i class="perfil-input-ico" data-lucide="map-pin" aria-hidden="true"></i>
+                                {{ form.comuna }}
+                            </div>
+                            {% if form.comuna.help_text %}<small class="help">{{ form.comuna.help_text }}</small>{% endif %}
+                            {% for error in form.comuna.errors %}<small class="error" role="alert">{{ error }}</small>{% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="perfil-actions">
+                        <button class="button perfil-save" type="submit"><i data-lucide="check" aria-hidden="true"></i>Guardar cambios</button>
+                    </div>
+                </form>
+            </section>
+
+            <aside class="perfil-card perfil-account" aria-labelledby="perfil-cuenta">
+                <div class="perfil-section-head">
+                    <span class="perfil-ico"><i data-lucide="settings" aria-hidden="true"></i></span>
+                    <div>
+                        <h2 id="perfil-cuenta">Tu cuenta</h2>
+                        <p>Información de acceso y rol en la plataforma.</p>
+                    </div>
+                </div>
+                <dl>
+                    <div class="perfil-row">
+                        <span class="perfil-ico"><i data-lucide="mail" aria-hidden="true"></i></span>
+                        <div>
+                            <dt>Correo de acceso</dt>
+                            <dd>{{ user.email }}</dd>
+                            <small>Es el correo con el que inicias sesión; no se cambia desde aquí.</small>
+                        </div>
+                    </div>
+                    <div class="perfil-row">
+                        <span class="perfil-ico"><i data-lucide="user-round" aria-hidden="true"></i></span>
+                        <div>
+                            <dt>Rol</dt>
+                            <dd>{{ user.role }}</dd>
+                        </div>
+                        <span class="perfil-pill"><span class="perfil-dot" aria-hidden="true"></span>Activo</span>
+                    </div>
+                    <div class="perfil-row">
+                        <span class="perfil-ico"><i data-lucide="calendar" aria-hidden="true"></i></span>
+                        <div>
+                            <dt>Miembro desde</dt>
+                            <dd>{{ request.user.date_joined|date:"j \d\e F \d\e Y" }}</dd>
+                        </div>
+                        {% with antiguedad=request.user.date_joined|timesince %}{% if "minuto" not in antiguedad and "hora" not in antiguedad %}<span class="perfil-pill is-quiet">{{ antiguedad|truncatewords:2|cut:"…"|cut:"," }}</span>{% endif %}{% endwith %}
+                    </div>
+                </dl>
+            </aside>
         </div>
     </div>
-    <section class="card activity-form-card">
-        <form method="post" novalidate>
-            {% csrf_token %}
-            {% if form.non_field_errors %}<div class="alert" role="alert">{{ form.non_field_errors }}</div>{% endif %}
-            {% for field in form %}
-                <div class="field">
-                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                    {{ field }}
-                    {% if field.help_text %}<small class="muted">{{ field.help_text }}</small>{% endif %}
-                    {% for error in field.errors %}<small class="error" role="alert">{{ error }}</small>{% endfor %}
-                </div>
-            {% endfor %}
-            <div class="toolbar">
-                <button class="button" type="submit">Guardar datos</button>
-                <a class="button secondary" href="{% url 'dashboard' %}">Volver al inicio</a>
-            </div>
-        </form>
-    </section>
+    {% endwith %}
+    {% endwith %}
 {% endblock %}

@@ -282,7 +282,9 @@ class TerrainTests(TestCase):
             },
             follow=True,
         )
-        self.assertContains(response, 'ya aparece en Siembra')
+        # Al registrar no hay aviso de confirmación: la ficha del predio ya trae la única pregunta que sigue.
+        self.assertNotContains(response, 'quedó guardado correctamente')
+        self.assertContains(response, '¿Cómo deseas organizar tu predio?')
         p = Predio.objects.get(nombre='Campo en siembra')
         page = self.client.get('/calendario/')
         self.assertContains(page, 'Campo en siembra')
@@ -558,14 +560,18 @@ class TerrainTests(TestCase):
             propietario=self.user, nombre='Recién creado', ubicacion='X', superficie_ha=Decimal('1')
         )
         response = self.client.get(f'/predios/{farm.pk}/?nuevo=1')
-        self.assertContains(response, 'Predio registrado correctamente')
+        self.assertContains(response, '¿Cómo deseas organizar tu predio?')
+        self.assertNotContains(response, 'Predio registrado correctamente')
         self.assertContains(response, 'Dividir mi predio')
         self.assertContains(response, f'/predios/{farm.pk}/potreros/nuevo/')
         self.assertContains(response, 'Lo haré más tarde')
         self.assertNotContains(response, 'Utilizar todo el predio')  # sin perímetro dibujado no se puede copiar
-        self.assertNotContains(self.client.get(f'/predios/{farm.pk}/'), 'Predio registrado correctamente')
+        # Mientras el predio no tenga potreros la pregunta sigue disponible, con o sin «?nuevo=1»…
+        self.assertContains(self.client.get(f'/predios/{farm.pk}/'), '¿Cómo deseas organizar tu predio?')
+        # …y desaparece en cuanto existe el primer potrero.
         Potrero.objects.create(predio=farm, nombre='Lote', superficie_ha=Decimal('0.5'))
-        self.assertNotContains(self.client.get(f'/predios/{farm.pk}/?nuevo=1'), 'Predio registrado correctamente')
+        for url in (f'/predios/{farm.pk}/?nuevo=1', f'/predios/{farm.pk}/'):
+            self.assertNotContains(self.client.get(url), '¿Cómo deseas organizar tu predio?')
 
     def test_activity_form_explains_product_section_instead_of_greying_it(self):
         self.client.post(self.url, self.plot_data())
@@ -1153,8 +1159,8 @@ class TerrainTests(TestCase):
 
     def test_decision_center_tools_and_single_sidebar_link(self):
         response = self.client.get('/decisiones/')
-        self.assertContains(response, 'Centro de decisiones')
-        self.assertContains(response, 'Calcula, planifica y optimiza los recursos de tus predios')
+        self.assertContains(response, 'Centro de decisiones')  # título de la pestaña del navegador
+        self.assertNotContains(response, 'Calcula, planifica y optimiza los recursos de tus predios')  # sin encabezado
         for text in ('Cuánto llevar', '¿Me alcanza?'):
             self.assertContains(response, text)
         enlaces = [item for item in response.context['menu'] if item.get('href') == '/decisiones/']
@@ -1672,9 +1678,15 @@ class ActividadAgricolaTests(TestCase):
         empty_response = self.client.get('/')
         self.assertEqual(empty_response.context['farm_data']['stats']['predios'], 0)
         self.assertEqual(empty_response.context['farm_data']['stats']['potreros'], 0)
-        self.assertContains(empty_response, 'Registrar predio')
-        self.assertContains(empty_response, 'Registra un predio para consultar la distribución')
-        self.assertContains(empty_response, 'Registrar un predio')
+        # Sin predios, Inicio muestra una sola tarjeta de arranque (un único «Registrar predio»), no cinco
+        # contadores en cero ni cuatro tarjetas vacías que repiten el mismo mensaje.
+        visible = re.sub(r'<script.*?</script>', '', empty_response.content.decode(), flags=re.S)
+        self.assertEqual(visible.count('class="btn-primary-agro" href="/predios/nuevo/"'), 1)
+        self.assertIn('Empieza registrando tu primer predio', visible)
+        self.assertIn('Explorar el catálogo agrícola', visible)
+        for removed in ('Superficie asignada a potreros', 'Potreros activos', 'Distribución de superficie', 'Actividades pendientes'):
+            self.assertNotIn(removed, visible)
+        self.assertNotIn('class="journey no-print"', visible)  # la ruta de trabajo no repite el mismo CTA
 
     def test_edit_and_status_updates_are_persistent_and_dashboard_count_is_real(self):
         activity = ActividadAgricola.objects.create(
@@ -3178,9 +3190,12 @@ class PredioPotreroFlowAndPrivacyTests(TestCase):
         farm, response = self.create_predio()
         self.assertRedirects(response, f'/predios/{farm.pk}/?nuevo=1')
         page = self.client.get(f'/predios/{farm.pk}/?nuevo=1')
+        self.assertNotContains(page, 'Predio registrado correctamente')
+        self.assertNotContains(page, 'Ya registraste el límite completo de tu predio')
         for text in (
-            'Predio registrado correctamente',
-            'Ya registraste el límite completo de tu predio',
+            '¿Cómo deseas organizar tu predio?',
+            'Puedes utilizar toda la superficie como un solo potrero o dividirla en sectores para gestionar tus '
+            'cultivos y actividades agrícolas por separado.',
             'Un solo potrero',
             'Utilizar todo el predio',
             'Dividir en potreros',
@@ -3202,10 +3217,13 @@ class PredioPotreroFlowAndPrivacyTests(TestCase):
         plot.save()
         self.assertEqual(Potrero.objects.get(pk=plot.pk).cultivo, crop)
         # No se crea un segundo potrero por doble envío y la acción solo acepta POST.
-        self.client.post(f'/predios/{farm.pk}/usar-completo/', {'nombre': 'Otro'})
+        second = self.client.post(f'/predios/{farm.pk}/usar-completo/', {'nombre': 'Otro'})
         self.assertEqual(Potrero.objects.filter(predio=farm).count(), 1)
+        self.assertRedirects(second, f'/predios/{farm.pk}/potreros/{plot.pk}/editar/', fetch_redirect_response=False)
         self.assertEqual(self.client.get(f'/predios/{farm.pk}/usar-completo/').status_code, 405)
-        self.assertNotContains(self.client.get(f'/predios/{farm.pk}/?nuevo=1'), 'Predio registrado correctamente')
+        detail = self.client.get(f'/predios/{farm.pk}/?nuevo=1')
+        self.assertNotContains(detail, 'Predio registrado correctamente')
+        self.assertNotContains(detail, '¿Cómo deseas organizar tu predio?')
 
     def test_case_b_split_shows_reference_and_accepts_several_potreros(self):
         farm, _ = self.create_predio()
@@ -3496,8 +3514,9 @@ class ButtonHierarchyAndNextStepTests(TestCase):
         self.assertEqual(listing.count('Configurar potrero'), 1)
         self.assertNotIn('Registrar primer potrero', listing)
         detail = self.page(f'/predios/{farm.pk}/')
-        self.assertIn('Siguiente paso', detail)
-        self.assertIn('→ Crea tu primer potrero', detail)
+        # Sin potreros la ficha ofrece una sola guía («¿Cómo deseas organizar tu predio?»), no además «Siguiente paso».
+        self.assertIn('¿Cómo deseas organizar tu predio?', detail)
+        self.assertNotIn('Siguiente paso', detail)
         self.assertIn(f'/predios/{farm.pk}/potreros/nuevo/', detail)
         self.assertNotIn('Registrar potrero', detail)
         self.assertNotIn('Planificación de siembra', detail)
@@ -3562,7 +3581,8 @@ class ButtonHierarchyAndNextStepTests(TestCase):
     def test_5_new_predio_shows_only_the_usage_decision(self):
         farm = self.farm(geojson=self.feature)
         html = self.page(f'/predios/{farm.pk}/?nuevo=1')
-        self.assertIn('¿Cómo utilizas este predio?', html)
+        self.assertIn('¿Cómo deseas organizar tu predio?', html)
+        self.assertNotIn('¿Cómo utilizas este predio?', html)
         self.assertIn('Utilizar todo el predio', html)
         self.assertIn('Dividir mi predio', html)
         self.assertIn('Lo haré más tarde', html)
@@ -3575,9 +3595,11 @@ class ButtonHierarchyAndNextStepTests(TestCase):
         farm = self.farm(geojson=self.feature)
         Potrero.objects.create(predio=farm, nombre='Principal', superficie_ha=Decimal('1'))
         html = self.page(f'/predios/{farm.pk}/?nuevo=1')
-        self.assertNotIn('¿Cómo utilizas este predio?', html)
+        self.assertNotIn('¿Cómo deseas organizar tu predio?', html)
         self.assertNotIn('Utilizar todo el predio', html)
         self.assertNotIn('Predio registrado correctamente', html)
+        self.assertNotIn('use-card', html)
+        self.assertIn('Gestión agrícola', html)
 
     def test_selected_panel_is_informative_and_script_has_no_duplicate_actions(self):
         from pathlib import Path
@@ -3785,8 +3807,7 @@ class VisualVarietyTests(TestCase):
 
     def test_decision_center_tools_are_differentiated_cards(self):
         html = self.html('/decisiones/')
-        for tag in ('Calculadora', 'Cobertura'):
-            self.assertIn(f'<span class="tool-card-tag">{tag}</span>', html)
+        self.assertNotIn('tool-card-tag', html)  # las etiquetas «Calculadora»/«Cobertura» repetían el nombre
         for label in ('Cuánto llevar', '¿Me alcanza?'):
             self.assertIn(f'<strong>{label}</strong>', html)
         self.assertEqual(html.count('class="tool-ico tone-'), 2)
@@ -4009,8 +4030,6 @@ class CalculatorGuidedFlowTests(IntegrationBase):
         self.assertEqual(llevar_panel.count('class="calc-step"'), 6)
         for marker in (
             'id="calc-status"',
-            'id="calc-stats"',
-            'class="info-strip calc-strip"',
             'id="calc-summary"',
             'id="calc-plot-picker"',
             'id="calc-crop-picker"',
@@ -4022,6 +4041,8 @@ class CalculatorGuidedFlowTests(IntegrationBase):
             'decisiones.css',
         ):
             self.assertIn(marker, html)
+        for removed in ('id="calc-stats"', 'info-strip', 'calc-strip', 'id="ctx-line"', 'class="calc-head"'):
+            self.assertNotIn(removed, html)  # sin estadísticas decorativas ni cabeceras repetidas
         # Prioridad: «Calcular ahora» es el botón principal; PDF, Reportes y «¿Me alcanza?» son secundarios.
         compact = re.sub(r'\s+', ' ', html)  # sin depender de cómo se formatearon los atributos
         self.assertRegex(compact, r'<button class="btn-primary-agro calc-submit" type="submit" id="calc-submit">')
@@ -4104,18 +4125,21 @@ class CalculatorGuidedFlowTests(IntegrationBase):
         for name in ('calc-flow.js', 'calc-panel.js', 'decisiones.css'):
             self.assertTrue((base / ('js' if name.endswith('.js') else 'css') / name).exists(), name)
 
-    def test_tool_selector_keeps_two_tools_and_catalog_strip_stays(self):
+    def test_tool_selector_keeps_two_tools_and_no_catalog_strip(self):
         html = self.page()
         for tool in ('llevar', 'alcanza'):
             self.assertIn(f'data-tool="{tool}"', html)
         self.assertEqual(html.count('class="tool-ico tone-'), 2)
-        # La tira muestra solo lo que tiene datos: con cultivos pero sin insumos no aparecen métricas en cero.
-        self.assertIn('Cultivos del catálogo', html)
-        for label in ('Semillas registradas', 'Fertilizantes en catálogo', 'Otros insumos registrados'):
-            self.assertNotIn(label, html)
+        # Sin tira de estadísticas del catálogo: ni cuando el catálogo está completo ni cuando le faltan datos.
         TipoInsumo.objects.create(nombre='Fertilizante')
         Insumo.objects.create(nombre='Abono de prueba', tipo=TipoInsumo.objects.get(nombre='Fertilizante'))
-        self.assertIn('Fertilizantes en catálogo', self.page())
+        for page in (html, self.page()):
+            for label in ('Semillas registradas', 'Fertilizantes en catálogo', 'Otros insumos registrados'):
+                self.assertNotIn(label, page)
+        for name in ('calc-flow.js', 'tool-flow.js', 'calc-panel.js'):
+            source = (Path(__file__).resolve().parent.parent / 'static' / 'js' / name).read_text(encoding='utf-8')
+            for label in ('Semillas registradas', 'Fertilizantes en catálogo', 'Otros insumos registrados'):
+                self.assertNotIn(label, source, name)
 
 
 class ToolFlowDesignTests(IntegrationBase):
@@ -4135,7 +4159,6 @@ class ToolFlowDesignTests(IntegrationBase):
             'data-picker="plot"',
             'data-picker="crop"',
             'data-flow-status',
-            'data-flow-strip',
             'data-flow-summary',
             'data-flow-summary-body',
             'data-flow-hint',
@@ -4146,6 +4169,7 @@ class ToolFlowDesignTests(IntegrationBase):
             'Comprobar disponibilidad',
         ):
             self.assertIn(marker, html)
+        self.assertNotIn('data-flow-strip', html)  # sin tira de estadísticas decorativas
         self.assertIn('data-result-for="cover-form"', html)
 
     def test_native_controls_and_field_names_are_preserved(self):
@@ -4253,15 +4277,18 @@ class GuidedJourneyTests(IntegrationBase):
         self.assertEqual(journey['next']['url'], f'/predios/{empty_farm.pk}/potreros/nuevo/')
 
     def test_journey_is_shown_on_main_sections_but_not_on_forms_or_farm_detail(self):
-        for url in ('/', '/predios/', '/calendario/', '/decisiones/', '/reportes/'):
+        for url in ('/', '/predios/', '/calendario/', '/reportes/'):
             html = self.client.get(url).content.decode()
             self.assertIn('class="journey no-print"', html, url)
             self.assertIn('Siguiente paso', html, url)
+        # El Centro de decisiones y las calculadoras no llevan la ruta de seis pasos.
+        self.assertNotIn('class="journey no-print"', self.client.get('/decisiones/').content.decode())
         for url in (f'/predios/{self.farm.pk}/', '/predios/nuevo/', f'/predios/{self.farm.pk}/potreros/nuevo/'):
             self.assertNotIn('class="journey no-print"', self.client.get(url).content.decode(), url)
 
     def test_each_section_explains_what_comes_next(self):
-        self.assertIn(
+        # El Centro de decisiones ya no explica «qué sigue»: arranca directo en la calculadora.
+        self.assertNotIn(
             'Para calcular necesitas: potrero + cultivo + superficie + dosis',
             self.client.get('/decisiones/').content.decode(),
         )
@@ -4402,10 +4429,14 @@ class DecisionsContinuityStaticTests(TestCase):
             self.assertIn('Asignar cultivo', js, name)
 
     def test_search_examples_come_from_the_real_catalog(self):
+        # Buscar se resuelve en el servidor: los ejemplos salen de los datos reales de la cuenta, nunca de textos fijos.
         js = self.source('js', 'busqueda.js')
-        self.assertNotIn('gusano', js)
-        self.assertNotIn('catálogo demo', js)
-        self.assertIn('search-examples', js)
+        template = (Path(__file__).resolve().parent.parent / 'templates' / 'busqueda.html').read_text(encoding='utf-8')
+        for source in (js, template):
+            self.assertNotIn('gusano', source)
+            self.assertNotIn('catálogo demo', source)
+        self.assertIn('search-examples', template)
+        self.assertIn('search_explore.examples', template)
 
 
 class FlowStatesTests(IntegrationBase):
@@ -4437,8 +4468,8 @@ class FlowStatesTests(IntegrationBase):
         self.assertEqual(journey['next']['title'], 'Comienza registrando tu predio')
         self.assertEqual(journey['next']['cta'], 'Registrar predio')
         html = self.client.get('/decisiones/').content.decode()
-        self.assertIn('Comienza registrando tu predio', html)
-        self.assertIn('data-farm-create-url="/predios/nuevo/"', html)
+        self.assertNotIn('Comienza registrando tu predio', html)  # la ruta ya no se dibuja en las calculadoras
+        self.assertIn('data-farm-create-url="/predios/nuevo/"', html)  # el botón único de la tarjeta lleva aquí
         self.assertNotIn('Regístralo en <a', html)
 
     def test_state_2_farm_without_plots_offers_whole_farm_or_split(self):
@@ -4518,7 +4549,7 @@ class FlowStatesTests(IntegrationBase):
         form = self.client.get(f'/predios/{self.farm.pk}/potreros/{self.plot.pk}/editar/').content.decode()
         self.assertIn('class="crumbs"', form)
         self.assertIn('Editar potrero', form)
-        self.assertIn('id="ctx-line"', self.client.get('/decisiones/').content.decode())
+        self.assertNotIn('id="ctx-line"', self.client.get('/decisiones/').content.decode())  # sin línea de contexto
 
     def test_decisions_accept_the_public_query_parameters_and_label_the_value_origin(self):
         self.plan()
@@ -4535,7 +4566,7 @@ class FlowStatesTests(IntegrationBase):
             'No puede superar las ',
         ):
             self.assertIn(text, panel)
-        self.assertIn('ctx-line', self.source('js', 'decisiones.js'))
+        self.assertNotIn('ctx-line', self.source('js', 'decisiones.js'))
 
     def test_base_catalog_has_the_extra_central_chile_crops_by_name_only(self):
         from ..catalog import ensure_base_crops

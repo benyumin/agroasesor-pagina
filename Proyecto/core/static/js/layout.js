@@ -14,9 +14,16 @@
     menuBtn?.setAttribute('aria-expanded', String(open));
   }
 
+  // Estado de los menús de la barra superior: la clase «open» muestra el panel y aria-expanded lo anuncia.
+  function syncPopovers() {
+    notesBtn?.setAttribute('aria-expanded', String(Boolean(notesMenu?.classList.contains('open'))));
+    profileBtn?.setAttribute('aria-expanded', String(Boolean(profileMenu?.classList.contains('open'))));
+  }
+
   function closePopovers() {
     profileMenu?.classList.remove('open');
     notesMenu?.classList.remove('open');
+    syncPopovers();
   }
 
   menuBtn?.addEventListener('click', () => {
@@ -29,7 +36,13 @@
     });
   });
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && sidebar?.classList.contains('open')) setMenuOpen(false);
+    if (event.key !== 'Escape') return;
+    if (sidebar?.classList.contains('open')) setMenuOpen(false);
+    const opened = notesMenu?.classList.contains('open') ? notesBtn : profileMenu?.classList.contains('open') ? profileBtn : null;
+    if (opened) {
+      closePopovers();
+      opened.focus();
+    }
   });
   mobileMenu.addEventListener('change', (event) => {
     if (!event.matches) setMenuOpen(false);
@@ -37,10 +50,12 @@
   profileBtn?.addEventListener('click', () => {
     notesMenu?.classList.remove('open');
     profileMenu?.classList.toggle('open');
+    syncPopovers();
   });
   notesBtn?.addEventListener('click', () => {
     profileMenu?.classList.remove('open');
     notesMenu?.classList.toggle('open');
+    syncPopovers();
   });
   document.addEventListener('click', (event) => {
     if (!event.target.closest('.popover-anchor')) closePopovers();
@@ -68,6 +83,45 @@
       }
     },
   };
+
+  // Un formulario que ya se envió no se vuelve a enviar: un doble clic (o un toque repetido en el celular) creaba el
+  // registro dos veces y dejaba dos avisos iguales. Si otra función cancela el envío (validación, dibujo en curso),
+  // no se bloquea nada.
+  const SENDING_RESET_MS = 15000;
+  function releaseForm(form) {
+    delete form.dataset.sending;
+    form.removeAttribute('aria-busy');
+    form.querySelectorAll('[data-was-sending]').forEach((control) => {
+      control.disabled = false;
+      control.removeAttribute('data-was-sending');
+    });
+  }
+  document.addEventListener('submit', (event) => {
+    const form = event.target;
+    if (!(form instanceof HTMLFormElement) || (form.method || '').toLowerCase() !== 'post') return;
+    if (form.hasAttribute('data-allow-resubmit')) return;
+    if (form.dataset.sending === '1') {
+      event.preventDefault();
+      return;
+    }
+    // Se revisa al terminar el evento: si alguien llamó a preventDefault, el envío no ocurrió.
+    window.setTimeout(() => {
+      if (event.defaultPrevented) return;
+      form.dataset.sending = '1';
+      form.setAttribute('aria-busy', 'true');
+      form.querySelectorAll('button[type="submit"], button:not([type]), input[type="submit"]').forEach((control) => {
+        if (control.disabled) return;
+        control.setAttribute('data-was-sending', '1');
+        control.disabled = true;
+      });
+      // Si la navegación falla (sin red), el formulario vuelve a quedar disponible.
+      window.setTimeout(() => releaseForm(form), SENDING_RESET_MS);
+    }, 0);
+  });
+  // Al volver con «Atrás» el navegador restaura la página tal como estaba: se libera lo que quedó bloqueado.
+  window.addEventListener('pageshow', (event) => {
+    if (event.persisted) document.querySelectorAll('form[data-sending]').forEach(releaseForm);
+  });
 
   // Sesión vencida o cookies borradas: si el servidor avisa en una llamada de la página (fetch), se muestra un aviso y se
   // lleva a la persona al login en vez de dejar botones que no hacen nada.

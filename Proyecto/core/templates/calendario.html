@@ -2,7 +2,7 @@
 {% load static agro_assets %}
 {% block title %}Calendario de siembra · AgroAsesor{% endblock %}
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'css/calendario.css' %}?v=13">
+    <link rel="stylesheet" href="{% static 'css/calendario.css' %}?v=15">
 {% endblock %}
 {% block content %}
     <div class="page-hero">
@@ -17,9 +17,9 @@
         <header class="sowing-head">
             <div>
                 <h2 id="sowing-registry-title">Mis predios y potreros</h2>
-                <p>Todo lo que registras queda guardado aquí automáticamente, ordenado por predio.</p>
             </div>
         </header>
+        {% if sowing_farms %}
         <div class="sowing-stats">
             <div class="sowing-stat tone-green">
                 <span class="stat-ico"><i data-lucide="map"></i></span>
@@ -38,6 +38,7 @@
                 <div><strong>{{ sowing_planted_total }}<small> de {{ sowing_plot_total }}</small></strong><span>Con siembra y cultivo</span></div>
             </div>
         </div>
+        {% endif %}
         {% for card in farm_cards %}
             {% with farm=card.predio farm_ui=card.ui %}
                 <article class="card sowing-farm">
@@ -166,7 +167,7 @@
             </article>
         {% endwith %}
 {% empty %}
-    <div class="card sowing-empty-card"><i data-lucide="map"></i><p><strong>No tienes predios registrados.</strong></p><p>Cuando registres uno aparecerá aquí junto con sus potreros.</p><a class="btn-primary-agro" href="{% url 'predio_create' %}"><i data-lucide="plus"></i> Registrar primer predio</a></div>
+    <div class="card sowing-empty-card"><div class="empty-state"><span class="empty-state-icon"><i data-lucide="map"></i></span><h3>No tienes predios registrados.</h3><p>Cuando registres uno aparecerá aquí con sus potreros y sus fechas de siembra.</p><a class="btn-primary-agro" href="{% url 'predio_create' %}"><i data-lucide="plus"></i> Registrar primer predio</a></div></div>
 {% endfor %}
 </section>
 {% if sowing_farms %}

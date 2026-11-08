@@ -393,3 +393,45 @@
         margin: 14mm;
     }
 }
+
+/* ---------- Pulido de diseño: Reportes ---------- */
+.report-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px;
+    padding: 18px;
+}
+
+.report-filters .field {
+    flex: 1 1 190px;
+    min-width: 0;
+    margin: 0;
+}
+
+.report-filters .check-line {
+    flex: 1 1 100%;
+    margin: 0;
+}
+
+.report-filters .toolbar {
+    flex: 0 0 auto;
+    margin: 0 0 0 auto;
+}
+
+.report-doc a:not(.button) {
+    color: var(--green);
+    font-weight: 600;
+}
+
+@media (max-width: 640px) {
+    .report-filters .toolbar {
+        flex: 1 1 100%;
+        margin: 0;
+    }
+
+    .report-filters .toolbar .button {
+        flex: 1;
+        justify-content: center;
+    }
+}
