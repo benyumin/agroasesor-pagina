@@ -2,7 +2,7 @@
 {% load static agro_assets %}
 {% block title %}Centro de decisiones · AgroAsesor{% endblock %}
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'css/decisiones.css' %}?v=14">
+    <link rel="stylesheet" href="{% static 'css/decisiones.css' %}?v=15">
 {% endblock %}
 {% block content %}
     <section class="decision-center"
@@ -26,17 +26,33 @@
                 </div>
             </div>
         {% endif %}
-    <div class="tool-tabs" role="tablist" aria-label="Herramientas">
-        <button type="button"
-                role="tab"
-                data-tool="llevar"
-                aria-controls="tool-llevar"
-                {% if initial_tool == 'llevar' %} class="is-active" aria-selected="true"{% else %} aria-selected="false" tabindex="-1"{% endif %}><span class="tool-ico tone-green"><i data-lucide="calculator" aria-hidden="true"></i></span><span class="tool-text"><strong>Cuánto llevar</strong><small>Semillas e insumos para tu potrero</small></span></button>
-        <button type="button"
-                role="tab"
-                data-tool="alcanza"
-                aria-controls="tool-alcanza"
-                {% if initial_tool == 'alcanza' %} class="is-active" aria-selected="true"{% else %} aria-selected="false" tabindex="-1"{% endif %}><span class="tool-ico tone-blue"><i data-lucide="warehouse" aria-hidden="true"></i></span><span class="tool-text"><strong>¿Me alcanza?</strong><small>Compara lo que tienes con lo que necesitas</small></span></button>
+    <div class="tool-tabs-shell">
+        <div class="tool-tabs-head">
+            <span class="tool-tabs-mark" aria-hidden="true"><i data-lucide="calculator"></i></span>
+            <div>
+                <p class="tool-tabs-kicker">Calculadora agrícola</p>
+                <p class="tool-tabs-lead">Elige qué necesitas calcular para tu potrero.</p>
+            </div>
+        </div>
+        <div class="tool-tabs" id="calc-modes" role="tablist" aria-label="Herramientas de la calculadora">
+            <button type="button"
+                    role="tab"
+                    data-tool="llevar"
+                    data-mode="semillas"
+                    aria-controls="tool-llevar"
+                    {% if initial_tool == 'llevar' and request.GET.tipo != 'insumos' %} class="is-active" aria-selected="true"{% else %} aria-selected="false"{% endif %}><span class="tool-ico tone-green"><i data-lucide="sprout" aria-hidden="true"></i></span><span class="tool-text"><strong>Semillas</strong><small>Cuánta semilla necesitas para sembrar</small></span></button>
+            <button type="button"
+                    role="tab"
+                    data-tool="llevar"
+                    data-mode="insumos"
+                    aria-controls="tool-llevar"
+                    {% if initial_tool == 'llevar' and request.GET.tipo == 'insumos' %} class="is-active" aria-selected="true"{% else %} aria-selected="false"{% endif %}><span class="tool-ico tone-amber"><i data-lucide="flask-conical" aria-hidden="true"></i></span><span class="tool-text"><strong>Insumos</strong><small>Fertilizante u otro producto a aplicar</small></span></button>
+            <button type="button"
+                    role="tab"
+                    data-tool="alcanza"
+                    aria-controls="tool-alcanza"
+                    {% if initial_tool == 'alcanza' %} class="is-active" aria-selected="true"{% else %} aria-selected="false"{% endif %}><span class="tool-ico tone-blue"><i data-lucide="warehouse" aria-hidden="true"></i></span><span class="tool-text"><strong>¿Me alcanza?</strong><small>Cobertura: compara lo que tienes con lo que necesitas</small></span></button>
+        </div>
     </div>
     <!-- CUÁNTO LLEVAR: herramienta guiada paso a paso (el motor de cálculo vive en calc-panel.js) -->
     <section class="tool-panel{% if not farm_data.plots %} is-no-plots{% endif %}"
@@ -45,22 +61,6 @@
              {% if initial_tool != 'llevar' %} hidden{% endif %}>
         <div class="calc-layout">
             <div class="calc-main">
-                <div class="mode-cards calc-modes"
-                     id="calc-modes"
-                     role="group"
-                     aria-label="Qué quieres calcular">
-                    <button type="button"
-                            data-mode="semillas"
-                            class="is-active"
-                            aria-pressed="true">
-                        <i data-lucide="sprout" aria-hidden="true"></i>
-                        <span><strong>Semillas</strong></span>
-                    </button>
-                    <button type="button" data-mode="insumos" aria-pressed="false">
-                        <i data-lucide="flask-conical" aria-hidden="true"></i>
-                        <span><strong>Fertilizante u otro insumo</strong></span>
-                    </button>
-                </div>
                 <form class="card calc-form" id="calc-form" novalidate>
                     <div class="calc-form-head">
                         <div class="calc-form-title">
@@ -449,8 +449,8 @@
     <script src="{% vendor 'jspdf.umd.min.js' 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js' %}"
             defer></script>
     <script src="{% static 'js/agro-pdf.js' %}?v=1" defer></script>
-    <script src="{% static 'js/calc-panel.js' %}?v=9" defer></script>
+    <script src="{% static 'js/calc-panel.js' %}?v=10" defer></script>
     <script src="{% static 'js/calc-flow.js' %}?v=5" defer></script>
     <script src="{% static 'js/tool-flow.js' %}?v=5" defer></script>
-    <script src="{% static 'js/decisiones.js' %}?v=9" defer></script>
+    <script src="{% static 'js/decisiones.js' %}?v=10" defer></script>
 {% endblock %}

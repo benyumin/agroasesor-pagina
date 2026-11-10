@@ -567,6 +567,18 @@
     color: var(--muted);
 }
 
+.search-corrected {
+    display: block;
+    margin-top: 2px;
+    color: var(--muted, #5f6b62);
+    font-size: 0.86rem;
+}
+
+.search-didyoumean a {
+    font-weight: 700;
+    color: var(--green-dark, #1f5a36);
+}
+
 .search-empty .search-empty-actions {
     display: flex;
     flex-wrap: wrap;

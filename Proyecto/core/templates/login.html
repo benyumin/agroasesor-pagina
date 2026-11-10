@@ -1,54 +1,22 @@
-{% load static agro_assets %}
 <!DOCTYPE html>
 <html lang="es">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>{% if mode == "register" %}Crear cuenta{% else %}Iniciar sesión{% endif %} · AgroAsesor</title>
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="{% vendor 'fonts/inter.css' 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap' %}"
-              rel="stylesheet">
-        <link rel="stylesheet" href="{% static 'css/login.css' %}?v=3">
+        {% include "partials/access_head.html" %}
     </head>
-    <body class="access-body">
+    <body class="access-body access-body--foto">
         <main class="access-shell">
-            <section class="access-visual" aria-hidden="true">
-                <div class="access-brand">
-                    <span class="access-logo" aria-hidden="true">
-                        <svg viewBox="0 0 24 24"
-                             width="20"
-                             height="20"
-                             fill="none"
-                             stroke="#fff"
-                             stroke-width="2"
-                             stroke-linecap="round"
-                             stroke-linejoin="round">
-                            <path d="M12 21v-8" />
-                            <path d="M8 13c0-4 2-8 4-10 2 2 4 6 4 10" />
-                            <path d="M7 16h10" />
-                        </svg>
-                    </span>
-                    <div>
-                        <strong>AgroAsesor</strong>
-                        <small>Gestión agrícola inteligente</small>
-                    </div>
-                </div>
-                <div class="access-copy">
-                    <h2>{{ headline }}</h2>
-                    <div class="access-meta">
-                        <span>Melipilla, Chile</span>
-                        <span>Gestión agrícola</span>
-                    </div>
-                </div>
-            </section>
+            {% include "partials/access_visual.html" %}
             <section class="access-panel">
+                <div class="access-content">
                 {% if mode == "register" %}
-                    <h1>Crear cuenta</h1>
+                    <h1>Crear Cuenta</h1>
                     <p class="lead">Regístrate con tus propios datos para comenzar a organizar tus predios y potreros.</p>
                 {% else %}
-                    <h1>Iniciar sesión</h1>
-                    <p class="lead">Ingresa con el nombre de usuario o correo electrónico de tu cuenta.</p>
+                    <h1>Iniciar Sesión</h1>
+                    <p class="lead">Ingresa tus credenciales profesionales para acceder a la plataforma agrícola.</p>
                 {% endif %}
                 <form method="post" class="access-form">
                     {% csrf_token %}
@@ -120,13 +88,13 @@
                         </div>
                     {% else %}
                         <label class="field" for="username">
-                            <span>Nombre de usuario o correo electrónico</span>
+                            <span>Correo electrónico</span>
                             <input id="username"
                                    name="username"
                                    type="text"
                                    required
                                    autocomplete="username"
-                                   placeholder="Tu usuario o correo"
+                                   placeholder="ejemplo@agroasesor.cl"
                                    value="{{ identifier }}">
                         </label>
                         <label class="field" for="password">
@@ -155,6 +123,7 @@
                 {% else %}
                     <p class="switch">¿No tienes cuenta? <a href="?mode=register">Regístrate aquí</a></p>
                 {% endif %}
+                </div>
             </section>
         </main>
         <script>

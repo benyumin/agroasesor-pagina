@@ -2,7 +2,7 @@
 {% load static agro_assets %}
 {% block title %}Mis predios y potreros · AgroAsesor{% endblock %}
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'css/predios.css' %}?v=31">
+    <link rel="stylesheet" href="{% static 'css/predios.css' %}?v=35">
 {% endblock %}
 {% block content %}
     <div class="page-hero terrain-page-heading">
@@ -309,7 +309,7 @@
                         <article class="potrero-history-item">
                             <div class="potrero-history-main">
                                 <strong>{{ potrero.nombre }}</strong>
-                                <span>{{ potrero.predio.nombre }} · {{ potrero.superficie_m2|floatformat:2 }} m² · {{ potrero.superficie_ha|floatformat:4 }} ha</span>
+                                <span>{{ potrero.predio.nombre }} · {{ potrero.superficie_ha|cifra }} ha ({{ potrero.superficie_m2|cifra:0 }} m²)</span>
                                 <span><span data-plot-crop-label="{{ potrero.pk }}">{{ potrero.cultivo|default:'Sin cultivo asociado' }}</span> · <span data-plot-status="{{ potrero.pk }}">{% if potrero.cultivo and potrero.cultivo.activo %}Cultivo activo{% elif potrero.cultivo %}Cultivo inactivo{% else %}Sin cultivo{% endif %}</span></span>
                                 <small>Creado {{ potrero.creado|date:"d/m/Y H:i" }}</small>
                                 <small>Actualizado {{ potrero.actualizado|date:"d/m/Y H:i" }}</small>
@@ -452,4 +452,4 @@
     </form>
 </dialog>
 {% endblock %}
-{% block extra_js %}{{ maps_config|json_script:'maps-config' }}<script src="{% vendor 'leaflet/leaflet.js' 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js' %}"></script><script src="{% vendor 'leaflet/leaflet-geoman.min.js' 'https://unpkg.com/@geoman-io/leaflet-geoman-free@2.18.0/dist/leaflet-geoman.min.js' %}"></script><script src="{% static 'js/predios-map.js' %}?v=23"></script><script src="{% static 'js/predios-view.js' %}?v=1"></script>{% endblock %}
+{% block extra_js %}{{ maps_config|json_script:'maps-config' }}<script src="{% vendor 'leaflet/leaflet.js' 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js' %}"></script><script src="{% vendor 'leaflet/leaflet-geoman.min.js' 'https://unpkg.com/@geoman-io/leaflet-geoman-free@2.18.0/dist/leaflet-geoman.min.js' %}"></script><script src="{% static 'js/predios-map.js' %}?v=28"></script><script src="{% static 'js/predios-view.js' %}?v=1"></script>{% endblock %}

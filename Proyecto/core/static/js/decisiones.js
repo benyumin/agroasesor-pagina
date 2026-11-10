@@ -131,12 +131,14 @@
   function showTool(name, focus) {
     if (!['llevar', 'alcanza'].includes(name)) name = 'llevar';
     root.dataset.tool = name;
-    tabs.forEach((tab) => {
-      const active = tab.dataset.tool === name;
-      tab.classList.toggle('is-active', active);
-      tab.setAttribute('aria-selected', String(active));
-      tab.tabIndex = active ? 0 : -1;
-    });
+    // Semillas e Insumos comparten panel: calc-panel.js decide cuál de las dos pestañas queda activa.
+    if (window.AgroCalcTabs) window.AgroCalcTabs.sync();
+    else
+      tabs.forEach((tab) => {
+        const active = tab.dataset.tool === name && (!tab.dataset.mode || tab.dataset.mode === 'semillas');
+        tab.classList.toggle('is-active', active);
+        tab.setAttribute('aria-selected', String(active));
+      });
     document.querySelectorAll('.tool-panel').forEach((panel) => {
       panel.hidden = panel.id !== 'tool-' + name;
     });

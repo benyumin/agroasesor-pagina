@@ -32,12 +32,19 @@ from .catalog import (
     crop_picker_data,
 )
 from .seasons import (
+    PLAN_TOTAL,
     assign_crop,
     current_season,
+    planning_state,
+    plot_form_initial,
+    save_season_form,
+    season_form_initial,
     season_payload,
+    sync_season_with_plot_form,
     update_current_dates,
     agricultural_season_for,
     record_form_crop_change,
+    vigente_season,
 )
 from .agronomy import evaluate_harvest_date, evaluate_sowing_date, find_reference
 from .geometry import coordinates_from_geojson
@@ -147,9 +154,6 @@ def map_config():
     return {'tile_url': settings.MAP_TILE_URL, 'attribution': settings.MAP_TILE_ATTRIBUTION}
 
 
-PLAN_TOTAL = 3  # pasos de planificación que ya existen en los datos: cultivo, fecha de siembra y fecha de cosecha
-
-
 def _task_summary(user, today):
     """Labores pendientes/vencidas por potrero y predio, y la próxima de cada potrero (solo lectura)."""
     from django.utils.formats import date_format
@@ -184,8 +188,20 @@ def _task_summary(user, today):
     return plots, farms
 
 
+def plan_form_url(plot, state):
+    """Formulario donde se completa la planificación: la temporada vigente o, si aún no existe, su creación.
+
+    Nunca el formulario general del potrero: allí no se edita la temporada y el botón volvería a la misma pantalla.
+    """
+    kwargs = {'predio_pk': plot.predio_id, 'potrero_pk': plot.pk}
+    season = state['season']
+    if season is not None:
+        return reverse('temporada_edit', kwargs={**kwargs, 'pk': season.pk})
+    return reverse('temporada_create', kwargs=kwargs)
+
+
 def _plot_ui(plot, farm, tasks):
-    done = int(bool(plot.cultivo_id)) + int(bool(plot.fecha_siembra)) + int(bool(plot.fecha_cosecha))
+    state = planning_state(plot)  # el progreso sale de la temporada vigente, no de campos sueltos del potrero
     info = tasks.get(plot.pk, {})
     plan_query = {'potrero': plot.pk}
     if plot.cultivo_id:
@@ -193,15 +209,17 @@ def _plot_ui(plot, farm, tasks):
     if farm.zona_id:
         plan_query['zone'] = farm.zona_id
     edit_url = reverse('potrero_edit', kwargs={'predio_pk': farm.pk, 'pk': plot.pk})
-    # Acción principal del potrero según lo que le falta; con cultivo y siembra ya se puede calcular.
-    if not plot.cultivo_id:
+    plan_form = plan_form_url(plot, state)
+    # Acción principal del potrero según lo que le falta: sin cultivo se asigna; con cultivo se completa la
+    # planificación en la temporada vigente; con los tres pasos hechos se calcula.
+    if not state['has_crop']:
         primary = {'label': 'Asignar cultivo', 'url': edit_url}
-    elif not plot.fecha_siembra:
-        primary = {'label': 'Continuar planificación', 'url': edit_url}
+    elif not state['complete']:
+        primary = {'label': 'Completar planificación', 'url': plan_form}
     else:
         primary = {'label': 'Calcular semillas', 'url': decision_url('semillas', plot)}
     tool_actions = []
-    if plot.cultivo_id:
+    if state['has_crop']:
         tool_actions = [
             {'label': 'Calcular semillas', 'url': decision_url('semillas', plot), 'icon': 'sprout'},
             {'label': 'Calcular insumos', 'url': decision_url('insumos', plot), 'icon': 'flask-conical'},
@@ -210,14 +228,18 @@ def _plot_ui(plot, farm, tasks):
     return {
         'primary': primary,
         'tool_actions': tool_actions,
+        # Con la planificación completa, además de «Calcular semillas» se ofrecen las otras dos calculadoras.
+        'extra_actions': tool_actions[1:] if state['complete'] else [],
         'edit_url': edit_url,
-        'can_calculate': bool(plot.cultivo_id and plot.fecha_siembra),
+        'plan_form_url': plan_form,
+        'season_id': state['season'].pk if state['season'] else None,
+        'can_calculate': state['has_crop'] and state['steps'][1],
         'status': plot_season_summary(plot)['status'],
-        'has_crop': bool(plot.cultivo_id),
-        'plan_done': done,
+        'has_crop': state['has_crop'],
+        'plan_done': state['done'],
         'plan_total': PLAN_TOTAL,
-        'plan_complete': done == PLAN_TOTAL,
-        'plan_steps': [bool(plot.cultivo_id), bool(plot.fecha_siembra), bool(plot.fecha_cosecha)],
+        'plan_complete': state['complete'],
+        'plan_steps': state['steps'],
         'pending': info.get('pending', 0),
         'overdue': info.get('overdue', 0),
         'next': info.get('next'),
@@ -237,7 +259,8 @@ def _farm_next_step(farm, plots, pending=0):
             'cta': 'Agregar potrero',
             'url': reverse('potrero_create', kwargs={'predio_pk': farm.pk}),
         }
-    without_crop = next((plot for plot in plots if not plot.cultivo_id), None)
+    states = {plot.pk: planning_state(plot) for plot in plots}
+    without_crop = next((plot for plot in plots if not states[plot.pk]['has_crop']), None)
     if without_crop:
         return {
             'key': 'cultivo',
@@ -246,14 +269,14 @@ def _farm_next_step(farm, plots, pending=0):
             'cta': 'Asignar cultivo',
             'url': reverse('potrero_edit', kwargs={'predio_pk': farm.pk, 'pk': without_crop.pk}),
         }
-    unplanned = next((plot for plot in plots if not (plot.fecha_siembra and plot.fecha_cosecha)), None)
+    unplanned = next((plot for plot in plots if not states[plot.pk]['complete']), None)
     if unplanned:
         return {
             'key': 'planificacion',
             'title': f'Define la planificación de «{unplanned.nombre}»',
             'text': 'Registra la fecha de siembra y la cosecha prevista.',
             'cta': 'Definir planificación',
-            'url': reverse('potrero_edit', kwargs={'predio_pk': farm.pk, 'pk': unplanned.pk}),
+            'url': plan_form_url(unplanned, states[unplanned.pk]),
         }
     first = plots[0]
     return {
@@ -313,13 +336,21 @@ def decision_url(tool='semillas', plot=None):
 def journey_payload(user, current):
     """Ruta de trabajo del usuario: qué ya hizo y cuál es el siguiente paso (solo lectura, sin datos nuevos)."""
     farms = list(Predio.objects.filter(propietario=user).order_by('pk'))
-    plots = list(Potrero.objects.filter(predio__propietario=user).select_related('cultivo', 'predio').order_by('pk'))
+    plots = list(
+        Potrero.objects.filter(predio__propietario=user)
+        .select_related('cultivo', 'predio')
+        .prefetch_related('temporadas')
+        .order_by('pk')
+    )
+    states = {plot.pk: planning_state(plot) for plot in plots}
     has_calculation = CalculoAgricola.objects.filter(usuario=user).exists()
     farm_ids_with_plots = {plot.predio_id for plot in plots}
     farm_without_plots = next((farm for farm in farms if farm.pk not in farm_ids_with_plots), None)
-    plot_without_crop = next((plot for plot in plots if not plot.cultivo_id), None)
-    plot_without_sowing = next((plot for plot in plots if plot.cultivo_id and not plot.fecha_siembra), None)
-    plot_with_crop = next((plot for plot in plots if plot.cultivo_id), None)
+    plot_without_crop = next((plot for plot in plots if not states[plot.pk]['has_crop']), None)
+    plot_without_sowing = next(
+        (plot for plot in plots if states[plot.pk]['has_crop'] and not states[plot.pk]['steps'][1]), None
+    )
+    plot_with_crop = next((plot for plot in plots if states[plot.pk]['has_crop']), None)
 
     def action(label, url, primary=True, post=False):
         return {'label': label, 'url': url, 'primary': primary, 'post': post}
@@ -402,11 +433,8 @@ def journey_payload(user, current):
                 'text': f'{plot_without_sowing.cultivo.nombre} en «{plot_without_sowing.nombre}»: falta la fecha de siembra para dejar el potrero planificado.',
                 'actions': [
                     action(
-                        'Continuar planificación',
-                        reverse(
-                            'potrero_edit',
-                            kwargs={'predio_pk': plot_without_sowing.predio_id, 'pk': plot_without_sowing.pk},
-                        ),
+                        'Completar planificación',
+                        plan_form_url(plot_without_sowing, states[plot_without_sowing.pk]),
                     )
                 ],
             },
@@ -540,6 +568,7 @@ def farm_payload(user):
     for plot in sorted(plots, key=lambda item: item.pk):
         plots_by_farm.setdefault(plot.predio_id, []).append(plot)
     plot_ui = {plot.pk: _plot_ui(plot, plot.predio, task_plots) for plot in plots}
+    plot_plan = {plot.pk: planning_state(plot) for plot in plots}
     farm_ui = {farm.pk: _farm_ui(farm, plots_by_farm.get(farm.pk, []), task_farms, plot_ui) for farm in predios}
     return {
         'predios': [
@@ -578,6 +607,9 @@ def farm_payload(user):
                 'zoneName': p.predio.zona.nombre if p.predio.zona_id else '',
                 'planDone': plot_ui[p.pk]['plan_done'],
                 'planTotal': PLAN_TOTAL,
+                'primaryLabel': plot_ui[p.pk]['primary']['label'],
+                'primaryUrl': plot_ui[p.pk]['primary']['url'],
+                'planFormUrl': plot_ui[p.pk]['plan_form_url'],
                 'pendingTasks': plot_ui[p.pk]['pending'],
                 'overdueTasks': plot_ui[p.pk]['overdue'],
                 'nextTask': plot_ui[p.pk]['next'],
@@ -586,9 +618,9 @@ def farm_payload(user):
                 'seedsUrl': decision_url('semillas', p),
                 'name': p.nombre,
                 'crop': p.cultivo.nombre if p.cultivo else '',
-                'variety': p.variedad,
-                'sowing': p.fecha_siembra.isoformat() if p.fecha_siembra else '',
-                'harvest': p.fecha_cosecha.isoformat() if p.fecha_cosecha else '',
+                'variety': plot_plan[p.pk]['variety'],
+                'sowing': plot_plan[p.pk]['sowing_date'].isoformat() if plot_plan[p.pk]['sowing_date'] else '',
+                'harvest': plot_plan[p.pk]['harvest_date'].isoformat() if plot_plan[p.pk]['harvest_date'] else '',
                 'areaHa': float(p.superficie_ha),
                 'areaM2': float(p.superficie_ha * Decimal('10000')),
                 'perimeterM': float(p.perimetro_m) if p.perimetro_m is not None else None,
@@ -757,7 +789,9 @@ def login_view(request):
             'registration_form': registration,
             'identifier': identifier,
             'headline': (
-                'Administra los datos reales de tu campo.' if mode == 'login' else 'Registra tu cuenta de agricultor.'
+                'Optimiza tus decisiones agrícolas con datos reales de tu campo.'
+                if mode == 'login'
+                else 'Registra tu cuenta de agricultor.'
             ),
         },
     )
@@ -1693,7 +1727,8 @@ def potrero_form(request, predio_pk, pk=None):
             # El mismo formulario llegó dos veces (doble clic): el primer envío ya creó el potrero. No se crea otro
             # ni se repite el aviso; se continúa a la ficha del predio.
             return redirect('predio_detail', pk=predio.pk)
-    form = PotreroForm(request.POST or None, instance=instance)
+    # La variedad y las fechas que se muestran son las de la temporada vigente: el potrero solo guarda una copia.
+    form = PotreroForm(request.POST or None, instance=instance, initial=plot_form_initial(instance))
     min_area = Decimal('0.0001')
     # Sin hectáreas libres no se pone «max»: un máximo menor que el mínimo hace que el navegador rechace todo en silencio.
     sin_espacio = available_area < min_area
@@ -1716,7 +1751,10 @@ def potrero_form(request, predio_pk, pk=None):
     )
     if request.method == 'POST' and form.is_valid():
         potrero = form.save()
+        # Cambio de cultivo: nace una temporada nueva. Mismo cultivo: la variedad y las fechas pasan a la temporada
+        # vigente, de modo que el potrero y su temporada no queden con datos distintos.
         record_form_crop_change(potrero, previous_crop)
+        sync_season_with_plot_form(potrero, previous_crop)
         if original is None:
             PredioHistorial.objects.create(
                 predio=predio,
@@ -1817,16 +1855,20 @@ def temporada_form(request, predio_pk, potrero_pk, pk=None):
         if pk
         else TemporadaCultivo(potrero=potrero)
     )
-    form = TemporadaCultivoForm(request.POST or None, instance=instance)
+    # Donde la temporada aún no tiene un dato y el potrero sí (potreros antiguos), el formulario lo propone.
+    form = TemporadaCultivoForm(
+        request.POST or None, instance=instance, initial=season_form_initial(potrero, instance if pk else None)
+    )
     if request.method == 'POST' and form.is_valid():
-        season = form.save(commit=False)
-        season.potrero = potrero
-        season.save()
-        messages.success(
-            request,
-            'La temporada quedó guardada. Las temporadas anteriores se conservan.',
-        )
+        result = save_season_form(potrero, request.user, form.instance)
+        text = 'La temporada quedó guardada. Las temporadas anteriores se conservan.'
+        if result['current']:
+            saved_plot = Potrero.objects.prefetch_related('temporadas').get(pk=potrero.pk)
+            if planning_state(saved_plot)['complete']:
+                text += ' La planificación quedó completa: ya puedes calcular semillas.'
+        messages.success(request, text)
         return redirect('predio_detail', pk=predio.pk)
+    latest = vigente_season(potrero)
     return _page(
         request,
         'temporada_form.html',
@@ -1837,6 +1879,8 @@ def temporada_form(request, predio_pk, potrero_pk, pk=None):
             'predio': predio,
             'potrero': potrero,
             'heading': 'Editar temporada' if pk else 'Registrar nueva temporada',
+            # Editar una temporada anterior no cambia los datos vigentes del potrero: se avisa en el formulario.
+            'is_past_season': bool(pk and latest is not None and latest.pk != instance.pk),
         },
     )
 
@@ -1890,7 +1934,7 @@ def calculate(request):
         if plot is None:
             raise ValueError('El potrero no existe o no pertenece a tu cuenta.')
         if area > plot.superficie_ha:
-            raise ValueError(f'La superficie no puede superar {plot.superficie_ha} ha registradas.')
+            raise ValueError(f'La superficie no puede superar {_fmt_number(plot.superficie_ha, 4)} ha registradas.')
         result = {}
         if operation in {'dose', 'coverage'}:
             crop_name = str(payload.get('crop') or '').strip()
@@ -2340,8 +2384,11 @@ def _sowing_next_steps(user, farms, today):
             )
             continue
         for plot in plots:
+            state = planning_state(plot)
             edit_url = reverse('potrero_edit', kwargs={'predio_pk': farm.pk, 'pk': plot.pk})
-            if not plot.cultivo_id:
+            plan_url = plan_form_url(plot, state)  # las fechas se completan en la temporada vigente
+            sowing_date = state['sowing_date']
+            if not state['has_crop']:
                 tasks.append(
                     {
                         'icon': 'sprout',
@@ -2352,36 +2399,36 @@ def _sowing_next_steps(user, farms, today):
                         'cta': 'Asignar cultivo',
                     }
                 )
-            elif not plot.fecha_siembra:
+            elif not state['steps'][1]:
                 tasks.append(
                     {
                         'icon': 'calendar-plus',
                         'tone': 'warn',
                         'text': f'Registra la fecha de siembra de «{plot.nombre}»',
                         'hint': f'{plot.cultivo.nombre} · {farm.nombre}',
-                        'url': edit_url,
+                        'url': plan_url,
                         'cta': 'Registrar fecha',
                     }
                 )
-            elif not plot.fecha_cosecha:
+            elif not state['steps'][2]:
                 tasks.append(
                     {
                         'icon': 'wheat',
                         'tone': 'info',
                         'text': f'Agrega la cosecha prevista de «{plot.nombre}»',
-                        'hint': f'{plot.cultivo.nombre} · siembra {plot.fecha_siembra:%d/%m/%Y}',
-                        'url': edit_url,
+                        'hint': f'{plot.cultivo.nombre} · siembra {sowing_date:%d/%m/%Y}',
+                        'url': plan_url,
                         'cta': 'Agregar fecha',
                     }
                 )
-            if plot.fecha_siembra and plot.fecha_siembra >= today and plot.pk not in sowing_planned:
-                query = urlencode({'potrero': plot.pk, 'tipo': 'siembra', 'fecha': plot.fecha_siembra.isoformat()})
+            if sowing_date and sowing_date >= today and plot.pk not in sowing_planned:
+                query = urlencode({'potrero': plot.pk, 'tipo': 'siembra', 'fecha': sowing_date.isoformat()})
                 tasks.append(
                     {
                         'icon': 'clipboard-list',
                         'tone': 'action',
                         'text': f'Programa la labor de siembra de «{plot.nombre}»',
-                        'hint': f'Siembra prevista el {plot.fecha_siembra:%d/%m/%Y}',
+                        'hint': f'Siembra prevista el {sowing_date:%d/%m/%Y}',
                         'url': reverse('actividad_create') + '?' + query,
                         'cta': 'Programar labor',
                     }
@@ -2554,7 +2601,7 @@ def calendario(request):
             'sowing_plot_total': sum(len(farm.potreros.all()) for farm in sowing_farms),
             'sowing_area_total': sum((farm.superficie_ha for farm in sowing_farms), Decimal('0')),
             'sowing_planted_total': sum(
-                1 for farm in sowing_farms for plot in farm.potreros.all() if plot.cultivo_id and plot.fecha_siembra
+                1 for farm in sowing_farms for plot in farm.potreros.all() if planning_state(plot)['steps'][1]
             ),
             'calendar_has_unverified': any(not reference.tiene_fuente_verificada for reference in references),
         },

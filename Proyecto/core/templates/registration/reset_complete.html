@@ -1,18 +1,33 @@
-{% load static %}
 <!DOCTYPE html>
 <html lang="es">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>Contraseña actualizada · AgroAsesor</title>
-        <link rel="stylesheet" href="{% static 'css/login.css' %}">
+        {% include "partials/access_head.html" %}
     </head>
-    <body class="access-body">
-        <main class="access-shell recovery-shell">
+    <body class="access-body access-body--foto">
+        <main class="access-shell access-shell--recuperar">
+            {% include "partials/access_visual.html" with headline="Protegemos la seguridad de tus datos y la administración de tus cultivos." %}
             <section class="access-panel">
-                <h1>Contraseña actualizada</h1>
-                <p class="lead">Tu nueva contraseña quedó guardada. Ya puedes ingresar a tu cuenta.</p>
-                <p class="switch"><a href="{% url 'login' %}">Iniciar sesión</a></p>
+                <div class="access-content">
+                    <span class="access-status" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"
+                             width="28"
+                             height="28"
+                             fill="none"
+                             stroke="currentColor"
+                             stroke-width="2"
+                             stroke-linecap="round"
+                             stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10" />
+                            <path d="m9 12 2 2 4-4" />
+                        </svg>
+                    </span>
+                    <h1>Contraseña Actualizada</h1>
+                    <p class="lead">Tu nueva contraseña quedó guardada. Ya puedes ingresar a tu cuenta.</p>
+                    <a class="submit" href="{% url 'login' %}">Iniciar sesión</a>
+                </div>
             </section>
         </main>
     </body>

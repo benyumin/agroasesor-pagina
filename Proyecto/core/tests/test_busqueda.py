@@ -285,3 +285,63 @@ class ExploracionYVacioTests(BusquedaBase):
         response = self.client.get('/busqueda/?q=maiz')
         self.assertEqual(response.status_code, 302)
         self.assertIn('login', response['Location'])
+
+
+class BusquedaToleranteTests(BusquedaBase):
+    """Errores habituales de escritura: se busca la palabra más parecida y se avisa qué se buscó."""
+
+    def search(self, **params):
+        self.client.login(username='agricultora', password=PASSWORD)
+        return self.client.get('/busqueda/', params)
+
+    def test_letra_faltante_invertida_o_sobrante_encuentra_el_cultivo(self):
+        for escrito in ('trgo', 'tirgo', 'triigo', 'trigp'):
+            r = self.search(q=escrito)
+            self.assertEqual(r.context['search_corrected'], 'trigo', escrito)
+            titulos = [item['title'] for s in r.context['search_sections'] for item in s['items']]
+            self.assertIn('Trigo', titulos, escrito)
+            self.assertContains(r, f'No encontramos «{escrito}»: mostramos lo más parecido.')
+
+    def test_error_en_palabra_larga_y_en_una_de_varias_palabras(self):
+        r = self.search(q='uera granulda')
+        self.assertEqual(r.context['search_corrected'], 'urea granulada')
+        titulos = [item['title'] for s in r.context['search_sections'] for item in s['items']]
+        self.assertIn('Urea granulada', titulos)
+        r = self.search(q='fertlizante')
+        self.assertIn(r.context['search_corrected'], ('fertilizante', 'fertilizantes'))
+        self.assertGreater(r.context['search_total'], 0)
+
+    def test_busqueda_correcta_no_se_corrige_ni_muestra_aviso(self):
+        for escrito in ('trigo', 'mai', 'Urea'):
+            r = self.search(q=escrito)
+            self.assertEqual(r.context['search_corrected'], '', escrito)
+            self.assertNotContains(r, 'mostramos lo más parecido')
+
+    def test_palabras_cortas_o_sin_parecido_no_inventan_resultados(self):
+        for escrito in ('zzzz', 'xq', 'tgo', 'qwertyuiop'):
+            r = self.search(q=escrito)
+            self.assertEqual(r.context['search_corrected'], '', escrito)
+            self.assertEqual(r.context['search_total'], 0, escrito)
+            self.assertContains(r, f'Sin resultados para «{escrito}»')
+
+    def test_la_correccion_no_muestra_predios_de_otra_cuenta(self):
+        predio = Predio.objects.create(propietario=self.other, nombre='Hacienda Quillay', ubicacion='Lejos', superficie_ha=5)
+        r = self.search(q='quilay')
+        self.assertEqual(r.context['search_corrected'], '')
+        self.assertNotContains(r, predio.nombre)
+
+    def test_correccion_sin_coincidencias_en_la_pestana_ofrece_quisiste_decir(self):
+        r = self.search(q='trgo', tab='insumos')
+        self.assertEqual(r.context['search_total'], 0)
+        self.assertContains(r, '¿Quisiste decir')
+        self.assertContains(r, 'href="/busqueda/?q=trigo"')  # lleva a todas las categorías, no a la misma pestaña vacía
+
+    def test_distancia_de_edicion(self):
+        from core.search import _distance, suggest_word
+
+        self.assertEqual(_distance('trigo', 'trigo', 2), 0)
+        self.assertEqual(_distance('tirgo', 'trigo', 2), 1)  # letras invertidas cuentan como un solo error
+        self.assertEqual(_distance('trgo', 'trigo', 2), 1)
+        self.assertGreater(_distance('papa', 'trigo', 2), 2)
+        self.assertIsNone(suggest_word('pap', {'papa': 3}))  # menos de 4 letras: no se corrige
+        self.assertEqual(suggest_word('tomatte', {'tomate': 2, 'tomillo': 1}), 'tomate')

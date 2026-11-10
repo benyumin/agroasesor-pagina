@@ -1,8 +1,8 @@
 {% extends "body.html" %}
-{% load static %}
+{% load static agro_assets %}
 {% block title %}{{ predio.nombre }} · AgroAsesor{% endblock %}
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'css/predios.css' %}?v=31">
+    <link rel="stylesheet" href="{% static 'css/predios.css' %}?v=35">
 {% endblock %}
 {% block content %}
     <nav class="crumbs" aria-label="Dónde estás"><a href="{% url 'predios' %}">Mis predios</a><span aria-hidden="true">›</span>{% if selected_potrero %}<a href="{% url 'predio_detail' predio.pk %}">{{ predio.nombre }}</a><span aria-hidden="true">›</span><span class="is-current" aria-current="page">{{ selected_potrero.nombre }}</span>{% else %}<span class="is-current" aria-current="page">{{ predio.nombre }}</span>{% endif %}</nav>
@@ -149,7 +149,7 @@
                 <div>
                     <dt>Superficie</dt>
                     <dd>
-                        {{ predio.superficie_ha|floatformat:4 }} ha
+                        {{ predio.superficie_ha|cifra }} ha
                     </dd>
                 </div>
                 <div><dt>Perímetro</dt><dd>{% if predio.perimetro_m is not None %}{{ predio.perimetro_m|floatformat:2 }} m{% else %}—{% endif %}</dd></div>
@@ -179,13 +179,13 @@
                 <div>
                     <dt>Superficie utilizada</dt>
                     <dd>
-                        {{ superficie_utilizada|floatformat:4 }} ha
+                        {{ superficie_utilizada|cifra }} ha
                     </dd>
                 </div>
                 <div>
                     <dt>Superficie restante</dt>
                     <dd>
-                        {{ superficie_restante|floatformat:4 }} ha
+                        {{ superficie_restante|cifra }} ha
                     </dd>
                 </div>
                 <div>
@@ -209,7 +209,7 @@
                         <div class="detail-plot-head">
                             <div>
                                 <strong>{{ potrero.nombre }}</strong>
-                                <p>{{ potrero.superficie_m2|floatformat:2 }} m² · {{ potrero.superficie_ha|floatformat:4 }} ha · {{ potrero.cultivo|default:'Sin cultivo asociado' }}</p>
+                                <p>{{ potrero.superficie_ha|cifra }} ha ({{ potrero.superficie_m2|cifra:0 }} m²) · {{ potrero.cultivo|default:'Sin cultivo asociado' }}</p>
                             </div>
                             <div class="row-menu" data-row-menu>
                                 <button type="button"
@@ -246,6 +246,7 @@
                 </div>
                 <div class="plot-actions">
                     <a class="btn-primary-agro btn-sm" href="{{ ui.primary.url }}">{{ ui.primary.label }}</a>
+                    {% for action in ui.extra_actions %}<a class="btn-secondary-agro btn-sm" href="{{ action.url }}">{{ action.label }}</a>{% endfor %}
                 </div>
                 {% if ui.has_crop %}<span class="plan-meter"><span class="plan-meter-bar" aria-hidden="true">{% for done in ui.plan_steps %}<i{% if done %} class="on"{% endif %}></i>{% endfor %}</span><span class="plan-meter-label">Planificación <strong>{{ ui.plan_done }} de {{ ui.plan_total }}</strong> pasos</span></span>{% endif %}
                 {% if ui.next %}<span class="next-task{% if ui.next.overdue %} is-overdue{% endif %}"><i data-lucide="{{ ui.next.icon }}"></i>Próxima labor · <strong>{{ ui.next.label }}</strong> · {{ ui.next.date }}</span>{% endif %}
@@ -254,6 +255,7 @@
                     {% for season in potrero.temporadas.all %}
                         <li>
                             <strong>{{ season.cultivo.nombre }}{% if season.variedad %} · {{ season.variedad }}{% endif %}{% if season.temporada_agricola %} · {{ season.temporada_agricola }}{% endif %}</strong>
+                            {% if season.pk == ui.season_id %}<span class="state-chip is-green">Vigente</span>{% endif %}
                             <span>{{ season.get_estado_display }}</span>
                             <span>Siembra: {{ season.fecha_siembra|date:"d/m/Y"|default:"Sin fecha" }}</span>
                             <span>Cosecha: {{ season.fecha_cosecha|date:"d/m/Y"|default:"Sin fecha" }}</span>

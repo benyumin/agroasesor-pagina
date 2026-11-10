@@ -2,7 +2,7 @@
 {% load static agro_assets %}
 {% block title %}{{ heading }} · AgroAsesor{% endblock %}
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'css/predios.css' %}?v=34">
+    <link rel="stylesheet" href="{% static 'css/predios.css' %}?v=35">
 {% endblock %}
 {% block content %}
     <nav class="crumbs" aria-label="Dónde estás"><a href="{% url 'predios' %}">Mis predios</a>{% if predio %}<span aria-hidden="true">›</span><a href="{% url 'predio_detail' predio.pk %}">{{ predio.nombre }}</a>{% endif %}{% if is_potrero %}<span aria-hidden="true">›</span><span class="is-current" aria-current="page">{{ heading }}</span>{% elif not predio %}<span aria-hidden="true">›</span><span class="is-current" aria-current="page">{{ heading }}</span>{% endif %}</nav>
@@ -262,4 +262,4 @@
 </div>
 {% endif %}
 {% endblock %}
-{% block extra_js %}{% if potrero_sin_espacio %}{% elif is_potrero or is_predio %}{{ maps_config|json_script:'maps-config' }}<script src="{% vendor 'leaflet/leaflet.js' 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js' %}"></script><script src="{% vendor 'leaflet/leaflet-geoman.min.js' 'https://unpkg.com/@geoman-io/leaflet-geoman-free@2.18.0/dist/leaflet-geoman.min.js' %}"></script><script src="{% static 'js/predios-map.js' %}?v=27"></script>{% endif %}{% endblock %}
+{% block extra_js %}{% if potrero_sin_espacio %}{% elif is_potrero or is_predio %}{{ maps_config|json_script:'maps-config' }}<script src="{% vendor 'leaflet/leaflet.js' 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js' %}"></script><script src="{% vendor 'leaflet/leaflet-geoman.min.js' 'https://unpkg.com/@geoman-io/leaflet-geoman-free@2.18.0/dist/leaflet-geoman.min.js' %}"></script><script src="{% static 'js/predios-map.js' %}?v=28"></script>{% endif %}{% endblock %}

@@ -2144,13 +2144,21 @@ class TemporadaCultivoTests(TestCase):
         }
 
     def test_each_new_season_persists_without_overwriting_legacy_potrero_data(self):
+        """La temporada nueva pasa a ser la vigente y el potrero se sincroniza con ella; los datos antiguos del
+        potrero no se pierden: quedan guardados como temporada cerrada y las demás nunca se tocan."""
         first_response = self.client.post(self.create_url, self.season_data())
         self.assertRedirects(first_response, f'/predios/{self.predio.pk}/')
-        first = TemporadaCultivo.objects.get()
+        legacy = self.potrero.temporadas.get(cultivo=self.crop)
+        self.assertEqual(
+            (legacy.variedad, legacy.fecha_siembra.isoformat(), legacy.fecha_cosecha.isoformat(), legacy.estado),
+            ('Variedad antigua', '2025-09-01', '2026-02-01', TemporadaCultivo.Estado.CERRADA),
+        )
+        first = self.potrero.temporadas.get(cultivo=self.new_crop)
         self.assertEqual(first.potrero, self.potrero)
-        self.assertEqual(first.cultivo, self.new_crop)
         self.assertEqual(first.variedad, 'Variedad nueva')
         self.assertEqual(first.observaciones, 'Rotación de este ciclo.')
+        self.potrero.refresh_from_db()
+        self.assertEqual((self.potrero.cultivo, self.potrero.variedad), (self.new_crop, 'Variedad nueva'))
 
         second_response = self.client.post(
             self.create_url,
@@ -2164,10 +2172,14 @@ class TemporadaCultivoTests(TestCase):
         self.assertRedirects(second_response, f'/predios/{self.predio.pk}/')
         self.potrero.refresh_from_db()
         self.assertEqual(self.potrero.cultivo, self.crop)
-        self.assertEqual(self.potrero.variedad, 'Variedad antigua')
-        self.assertEqual(self.potrero.fecha_siembra.isoformat(), '2025-09-01')
-        self.assertEqual(self.potrero.fecha_cosecha.isoformat(), '2026-02-01')
-        self.assertEqual(self.potrero.temporadas.count(), 2)
+        self.assertEqual(self.potrero.variedad, 'Otra temporada')
+        self.assertEqual(self.potrero.fecha_siembra.isoformat(), '2027-09-15')
+        self.assertEqual(self.potrero.fecha_cosecha.isoformat(), '2028-02-10')
+        self.assertEqual(self.potrero.temporadas.count(), 3)
+        legacy.refresh_from_db()
+        first.refresh_from_db()
+        self.assertEqual((legacy.variedad, legacy.fecha_siembra.isoformat()), ('Variedad antigua', '2025-09-01'))
+        self.assertEqual((first.variedad, first.fecha_siembra.isoformat()), ('Variedad nueva', '2026-09-15'))
         self.assertContains(self.client.get(f'/predios/{self.predio.pk}/'), 'Variedad nueva')
         self.assertContains(self.client.get(f'/predios/{self.predio.pk}/'), 'Otra temporada')
 
@@ -2181,7 +2193,7 @@ class TemporadaCultivoTests(TestCase):
         )
         self.assertEqual(
             list(self.potrero.temporadas.values_list('cultivo__nombre', flat=True)),
-            ['Cultivo legado', 'Cultivo nuevo'],
+            ['Cultivo legado', 'Cultivo nuevo', 'Cultivo legado'],
         )
 
     def test_season_validation_and_non_deletion(self):
@@ -3808,9 +3820,10 @@ class VisualVarietyTests(TestCase):
     def test_decision_center_tools_are_differentiated_cards(self):
         html = self.html('/decisiones/')
         self.assertNotIn('tool-card-tag', html)  # las etiquetas «Calculadora»/«Cobertura» repetían el nombre
-        for label in ('Cuánto llevar', '¿Me alcanza?'):
+        # Calculadora unificada: Semillas e Insumos dejaron de ir dentro de «Cuánto llevar».
+        for label in ('Semillas', 'Insumos', '¿Me alcanza?'):
             self.assertIn(f'<strong>{label}</strong>', html)
-        self.assertEqual(html.count('class="tool-ico tone-'), 2)
+        self.assertEqual(html.count('class="tool-ico tone-'), 3)
 
     def test_ficha_predio_shows_summary_chips_and_plot_menus(self):
         self.labor(self.planned, -1)
@@ -4129,7 +4142,8 @@ class CalculatorGuidedFlowTests(IntegrationBase):
         html = self.page()
         for tool in ('llevar', 'alcanza'):
             self.assertIn(f'data-tool="{tool}"', html)
-        self.assertEqual(html.count('class="tool-ico tone-'), 2)
+        # Tres pestañas (Semillas, Insumos, ¿Me alcanza?) sobre los mismos dos paneles de siempre.
+        self.assertEqual(html.count('class="tool-ico tone-'), 3)
         # Sin tira de estadísticas del catálogo: ni cuando el catálogo está completo ni cuando le faltan datos.
         TipoInsumo.objects.create(nombre='Fertilizante')
         Insumo.objects.create(nombre='Abono de prueba', tipo=TipoInsumo.objects.get(nombre='Fertilizante'))
@@ -4236,7 +4250,11 @@ class GuidedJourneyTests(IntegrationBase):
         journey = self.journey()
         self.assertEqual(journey['steps'][3]['state'], 'current')
         self.assertEqual(journey['next']['title'], 'Planifica la siembra')
-        self.assertEqual(journey['next']['cta'], 'Continuar planificación')
+        self.assertEqual(journey['next']['cta'], 'Completar planificación')
+        # ...y lleva al formulario de la temporada, no de vuelta al del potrero (potrero antiguo: crear su temporada).
+        self.assertEqual(
+            journey['next']['url'], f'/predios/{self.farm.pk}/potreros/{self.plot.pk}/temporadas/nueva/'
+        )
         self.assertEqual('Cultivo seleccionado', journey['next']['status'])
         # Con siembra → ya puede usar el Centro de decisiones, con el potrero y el cultivo precargados.
         self.assign(fecha_siembra=_date(2026, 10, 10))
@@ -4501,7 +4519,7 @@ class FlowStatesTests(IntegrationBase):
         self.plot.save()
         journey = self.client.get('/').context['journey']
         self.assertEqual(journey['next']['title'], 'Planifica la siembra')
-        self.assertEqual(journey['next']['cta'], 'Continuar planificación')
+        self.assertEqual(journey['next']['cta'], 'Completar planificación')
 
     def test_state_5_offers_the_three_tools_with_the_plot_preselected(self):
         self.plan()
@@ -4520,7 +4538,7 @@ class FlowStatesTests(IntegrationBase):
             self.assertNotIn(f'tipo=semillas&amp;potrero={self.plot.pk}', html)  # aún no se puede calcular
         self.plot.cultivo = self.maize
         self.plot.save()
-        self.assertIn('Continuar planificación', self.client.get('/calendario/').content.decode())
+        self.assertIn('Completar planificación', self.client.get('/calendario/').content.decode())
         self.plan()
         link = f'/decisiones/?tipo=semillas&amp;potrero={self.plot.pk}'
         calendar = self.client.get('/calendario/').content.decode()

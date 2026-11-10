@@ -1,18 +1,34 @@
-{% load static %}
 <!DOCTYPE html>
 <html lang="es">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>Solicitud recibida · AgroAsesor</title>
-        <link rel="stylesheet" href="{% static 'css/login.css' %}">
+        {% include "partials/access_head.html" %}
     </head>
-    <body class="access-body">
-        <main class="access-shell recovery-shell">
+    <body class="access-body access-body--foto">
+        <main class="access-shell access-shell--recuperar">
+            {% include "partials/access_visual.html" with headline="Protegemos la seguridad de tus datos y la administración de tus cultivos." %}
             <section class="access-panel">
-                <h1>Solicitud recibida</h1>
-                <p class="lead">Si existe una cuenta activa con ese correo, se enviarán instrucciones. En desarrollo local, el correo aparece en la consola del servidor.</p>
-                <p class="switch"><a href="{% url 'login' %}">Volver al inicio de sesión</a></p>
+                <div class="access-content">
+                    <span class="access-status" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"
+                             width="28"
+                             height="28"
+                             fill="none"
+                             stroke="currentColor"
+                             stroke-width="2"
+                             stroke-linecap="round"
+                             stroke-linejoin="round">
+                            <path d="M22 13V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v12c0 1.1.9 2 2 2h8" />
+                            <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+                            <path d="m16 19 2 2 4-4" />
+                        </svg>
+                    </span>
+                    <h1>Solicitud Recibida</h1>
+                    <p class="lead">Si existe una cuenta activa con ese correo, te enviamos las instrucciones para restablecer tu contraseña. Revisa tu bandeja de entrada y la carpeta de spam.</p>
+                    <a class="submit" href="{% url 'login' %}">Volver al inicio de sesión</a>
+                </div>
             </section>
         </main>
     </body>

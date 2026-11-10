@@ -8,7 +8,8 @@
     <div class="page-hero">
         <div>
             <h1 class="page-title">{{ heading }}</h1>
-            <p class="page-sub">{{ predio.nombre }} · {{ potrero.nombre }}. Cada temporada se guarda por separado; registrar una nueva no reemplaza los datos del potrero ni temporadas anteriores.</p>
+            <p class="page-sub">{{ predio.nombre }} · {{ potrero.nombre }}. La temporada vigente (la más reciente) es la que planifica el potrero: al guardarla, el cultivo, la variedad y las fechas del potrero quedan al día para las calculadoras y el calendario. Las temporadas anteriores se conservan intactas.</p>
+            {% if is_past_season %}<p class="page-sub"><strong>Esta es una temporada anterior.</strong> Puedes corregirla; los datos vigentes del potrero no cambian.</p>{% endif %}
         </div>
         <a class="button secondary"
            href="{% url 'predio_detail' predio.pk %}#potrero-{{ potrero.pk }}">Volver al predio</a>

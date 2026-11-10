@@ -48,7 +48,7 @@
 
   const $ = (id) => document.getElementById(id);
   const ui = {
-    modes: Array.from(root.querySelectorAll('#calc-modes [data-mode]')),
+    modes: Array.from(document.querySelectorAll('#calc-modes [data-mode]')),
     form: $('calc-form'),
     title: $('calc-title'),
     hint: $('calc-hint'),
@@ -976,14 +976,23 @@
     refreshProducts();
   }
 
+  // Selector único de herramientas (Semillas · Insumos · ¿Me alcanza?): una pestaña está activa cuando
+  // coincide la herramienta visible y, en «Cuánto llevar», también el modo de cálculo.
+  function syncToolTabs() {
+    const center = document.querySelector('.decision-center');
+    const tool = (center && center.dataset.tool) || 'llevar';
+    document.querySelectorAll('.tool-tabs [data-tool]').forEach((tab) => {
+      const active = tab.dataset.tool === tool && (!tab.dataset.mode || tab.dataset.mode === mode);
+      tab.classList.toggle('is-active', active);
+      tab.setAttribute('aria-selected', String(active));
+    });
+  }
+  window.AgroCalcTabs = { sync: syncToolTabs };
+
   function setMode(next) {
     mode = next === 'insumos' ? 'insumos' : 'semillas';
     const seed = mode === 'semillas';
-    ui.modes.forEach((button) => {
-      const active = button.dataset.mode === mode;
-      button.classList.toggle('is-active', active);
-      button.setAttribute('aria-pressed', String(active));
-    });
+    syncToolTabs();
     ui.title.textContent = seed ? 'Calcular semillas' : 'Calcular insumos';
     ui.hint.textContent = seed
       ? 'La densidad sale del cultivo en la base de datos. Ajústala si no vas a sembrar todo el potrero.'

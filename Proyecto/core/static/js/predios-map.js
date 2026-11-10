@@ -422,7 +422,9 @@
   function plotNextAction(plot) {
     if (!plot.crop) return nextAction('Asignar cultivo a ' + plot.name, 'Asignar cultivo', { assignId: plot.id });
     if (Number(plot.planDone) < Number(plot.planTotal)) {
-      return nextAction('Definir la planificación de ' + plot.name, 'Definir planificación', { href: plot.editUrl });
+      return nextAction('Definir la planificación de ' + plot.name, 'Definir planificación', {
+        href: plot.primaryUrl || plot.planFormUrl || plot.editUrl,
+      });
     }
     if (!plot.nextTask)
       return nextAction('Programar una labor en ' + plot.name, 'Programar labor', { href: plot.taskUrl });
@@ -524,12 +526,9 @@
       }
       details.appendChild(history);
       const plotActions = el('div', 'plot-actions');
-      const plotNext = el(
-        'a',
-        'btn-primary-agro btn-sm',
-        !plot.crop ? 'Asignar cultivo' : !plot.sowing ? 'Continuar planificación' : 'Calcular semillas',
-      );
-      plotNext.href = !plot.crop || !plot.sowing ? plot.editUrl : plot.seedsUrl;
+      // La misma acción que la tarjeta del predio: el servidor decide según la temporada vigente.
+      const plotNext = el('a', 'btn-primary-agro btn-sm', plot.primaryLabel || 'Calcular semillas');
+      plotNext.href = plot.primaryUrl || plot.seedsUrl;
       const plotOpen = el('a', 'btn-secondary-agro btn-sm', 'Ver ficha e historial');
       plotOpen.href = plot.detailUrl;
       plotActions.append(plotNext, plotOpen);

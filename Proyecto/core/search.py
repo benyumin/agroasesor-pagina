@@ -443,6 +443,84 @@ def _rank(item, tokens, query_folded):
     return 4
 
 
+def _distance(a, b, limit):
+    """Distancia de edición (inserción, borrado, sustitución y letras invertidas), con corte en ``limit``."""
+    if abs(len(a) - len(b)) > limit:
+        return limit + 1
+    previous2, previous = None, list(range(len(b) + 1))
+    for i, char_a in enumerate(a, 1):
+        current = [i] + [0] * len(b)
+        for j, char_b in enumerate(b, 1):
+            cost = 0 if char_a == char_b else 1
+            current[j] = min(previous[j] + 1, current[j - 1] + 1, previous[j - 1] + cost)
+            if previous2 is not None and i > 1 and j > 1 and char_a == b[j - 2] and a[i - 2] == char_b:
+                current[j] = min(current[j], previous2[j - 2] + 1)  # «tirgo» → «trigo»
+        if min(current) > limit:
+            return limit + 1
+        previous2, previous = previous, current
+    return previous[-1]
+
+
+def _tolerance(token):
+    """Errores que se perdonan según el largo: palabras cortas no se corrigen (darían falsos positivos)."""
+    if len(token) < 4:
+        return 0
+    return 1 if len(token) < 7 else 2
+
+
+def _vocabulary(built):
+    """Palabras (sin tildes) de los títulos y subtítulos de todo lo que se puede encontrar, con su frecuencia."""
+    words = Counter()
+    for items in built.values():
+        for item in items:
+            for word in (item['folded_title'] + ' ' + fold(item['subtitle'])).replace('-', ' ').split():
+                word = word.strip('.,;:()«»"\'/')
+                if len(word) >= 3 and not word.isdigit():
+                    words[word] += 1
+    return words
+
+
+def suggest_word(token, vocabulary):
+    """La palabra del catálogo más parecida a ``token`` (o ``None``): tolera errores habituales de escritura."""
+    limit = _tolerance(token)
+    if not limit:
+        return None
+    best = None
+    for word, frequency in vocabulary.items():
+        if word[0] != token[0] and limit < 2:
+            continue  # en palabras cortas el error rara vez está en la primera letra
+        # También se compara con el inicio de la palabra: «fertlizan» → «fertilizante».
+        whole = _distance(token, word, limit)
+        partial = _distance(token, word[: len(token)], limit) if len(word) > len(token) else limit + 1
+        distance = min(whole, partial)
+        if distance > limit:
+            continue
+        # A igual distancia gana la palabra completa sobre el comienzo de una más larga, y luego la más frecuente.
+        key = (distance, whole > distance, -frequency, word)
+        if best is None or key < best[0]:
+            best = (key, word)
+    return best[1] if best else None
+
+
+def correct_tokens(tokens, built):
+    """Corrige solo las palabras que no aparecen en ningún resultado. Devuelve ``None`` si no hay nada que corregir."""
+    haystacks = [item['haystack'] for items in built.values() for item in items]
+    vocabulary = None
+    corrected, changed = [], False
+    for token in tokens:
+        if any(token in haystack for haystack in haystacks):
+            corrected.append(token)
+            continue
+        if vocabulary is None:
+            vocabulary = _vocabulary(built)
+        suggestion = suggest_word(token, vocabulary)
+        if not suggestion:
+            return None
+        corrected.append(suggestion)
+        changed = True
+    return corrected if changed else None
+
+
 def _url(params, **changes):
     merged = {key: value for key, value in params.items() if value not in ('', None)}
     for key, value in changes.items():
@@ -457,8 +535,15 @@ def run_search(catalog, farms, params):
     """Resultado completo de una búsqueda: pestañas con conteos, resultados, filtros y paginación."""
     query, tab, filters, order, page_number = _parse(params)
     tokens = fold(query).split()
-    query_folded = ' '.join(tokens)
     built = build_items(catalog, farms)
+    # Tolerancia a errores de escritura: si una palabra no existe en ningún resultado se busca la más parecida
+    # («trgo» → «trigo») y se avisa al usuario qué se buscó en realidad.
+    corrected = correct_tokens(tokens, built) if tokens else None
+    corrected_query = ''
+    if corrected:
+        tokens = corrected
+        corrected_query = ' '.join(corrected)
+    query_folded = ' '.join(tokens)
 
     def matching(items, with_filters=True):
         selected = []
@@ -515,6 +600,8 @@ def run_search(catalog, farms, params):
         'search_filters': filters,
         'search_order': order,
         'search_has_query': bool(tokens),
+        'search_corrected': corrected_query,
+        'search_corrected_url': _url({'q': corrected_query}) if corrected_query else '',  # en todas las categorías
         'search_active_filters': [],
         'search_clear_url': _url({'q': query}, tab=tab if tab != 'todos' else ''),
         'search_reset_url': reverse('busqueda'),

@@ -1,42 +1,71 @@
-{% load static %}
 <!DOCTYPE html>
 <html lang="es">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>{% if validlink %}Restablecer contraseña{% else %}Recuperar contraseña{% endif %} · AgroAsesor</title>
-        <link rel="stylesheet" href="{% static 'css/login.css' %}">
+        {% include "partials/access_head.html" %}
     </head>
-    <body class="access-body">
-        <main class="access-shell recovery-shell">
+    <body class="access-body access-body--foto">
+        <main class="access-shell access-shell--recuperar">
+            {% include "partials/access_visual.html" with headline="Protegemos la seguridad de tus datos y la administración de tus cultivos." %}
             <section class="access-panel">
-                {% if validlink %}
-                    <h1>Restablecer contraseña</h1>
-                    <p class="lead">Elige una contraseña nueva y segura para tu cuenta.</p>
-                {% elif form %}
-                    <h1>Recuperar contraseña</h1>
-                    <p class="lead">Ingresa el correo asociado a tu cuenta. Te enviaremos instrucciones para restablecer el acceso.</p>
-                {% else %}
-                    <h1>Enlace no disponible</h1>
-                    <p class="lead">El enlace es inválido o venció. Solicita uno nuevo para continuar.</p>
-                {% endif %}
-                {% if form %}
-                    <form method="post" class="access-form">
-                        {% csrf_token %}
-                        {{ form.non_field_errors }}
-                        {% for field in form %}
-                            <label class="field" for="{{ field.id_for_label }}">
-                                <span>{{ field.label }}</span>
-                                {{ field }}
-                                {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
-                                {{ field.errors }}
-                            </label>
-                        {% endfor %}
-                        <button class="submit"
-                                type="submit">{% if validlink %}Guardar contraseña{% else %}Enviar instrucciones{% endif %}</button>
-                    </form>
-                {% endif %}
-                <p class="switch"><a href="{% url 'login' %}">Volver al inicio de sesión</a></p>
+                <div class="access-content">
+                    {% if validlink %}
+                        <h1>Restablecer Contraseña</h1>
+                        <p class="lead">Elige una contraseña nueva y segura para tu cuenta.</p>
+                    {% elif form %}
+                        <h1>Recuperar Contraseña</h1>
+                        <p class="lead">Ingresa tu correo electrónico y te enviaremos las instrucciones para restablecer tu contraseña.</p>
+                    {% else %}
+                        <h1>Enlace No Disponible</h1>
+                        <p class="lead">El enlace es inválido o venció. Solicita uno nuevo para continuar.</p>
+                    {% endif %}
+                    {% if form %}
+                        <form method="post" class="access-form">
+                            {% csrf_token %}
+                            {{ form.non_field_errors }}
+                            {% for field in form %}
+                                <label class="field" for="{{ field.id_for_label }}">
+                                    <span>{{ field.label }}</span>
+                                    {% if field.name == "email" %}
+                                        <input type="email"
+                                               name="email"
+                                               id="{{ field.id_for_label }}"
+                                               autocomplete="email"
+                                               maxlength="254"
+                                               required
+                                               placeholder="ejemplo@agroasesor.cl"
+                                               value="{{ field.value|default_if_none:'' }}">
+                                    {% else %}
+                                        {{ field }}
+                                    {% endif %}
+                                    {% if field.help_text %}<div class="field-help">{{ field.help_text }}</div>{% endif %}
+                                    {{ field.errors }}
+                                </label>
+                            {% endfor %}
+                            <button class="submit"
+                                    type="submit">{% if validlink %}Guardar contraseña{% else %}Enviar instrucciones{% endif %}</button>
+                        </form>
+                    {% endif %}
+                    <p class="switch">
+                        <a href="{% url 'login' %}">
+                            <svg viewBox="0 0 24 24"
+                                 width="14"
+                                 height="14"
+                                 fill="none"
+                                 stroke="currentColor"
+                                 stroke-width="2.4"
+                                 stroke-linecap="round"
+                                 stroke-linejoin="round"
+                                 aria-hidden="true">
+                                <path d="m12 19-7-7 7-7" />
+                                <path d="M19 12H5" />
+                            </svg>
+                            Volver al inicio de sesión
+                        </a>
+                    </p>
+                </div>
             </section>
         </main>
     </body>

@@ -41,7 +41,7 @@ def abrir_bd():
 
     dsn = current_app.config.get("AGROASESOR_READONLY_DATABASE_URL")
     if not dsn:
-        raise ApiError(503, "BASE_NO_CONECTADA", "La conexi?n PostgreSQL no est? configurada.")
+        raise ApiError(503, "BASE_NO_CONECTADA", "La conexión PostgreSQL no está configurada.")
 
     try:
         con = psycopg.connect(
@@ -54,7 +54,7 @@ def abrir_bd():
             cursor.execute("SHOW transaction_read_only")
             if cursor.fetchone()["transaction_read_only"] != "on":
                 con.close()
-                raise ApiError(503, "BASE_NO_SEGURA", "La conexi?n no est? en modo de solo lectura.")
+                raise ApiError(503, "BASE_NO_SEGURA", "La conexión no está en modo de solo lectura.")
 
         g.bd = con
         return con

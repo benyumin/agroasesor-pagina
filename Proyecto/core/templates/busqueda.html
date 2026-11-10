@@ -121,7 +121,8 @@
         <div class="search-summary" role="status" aria-live="polite">
             <p>
                 <strong>{{ search_total }}</strong> resultado{{ search_total|pluralize }}
-                {% if search_query %}para «<span class="q">{{ search_query }}</span>»{% elif search_mode == 'list' %}en {{ search_tab_label|lower }}{% endif %}
+                {% if search_query %}para «<span class="q">{% if search_corrected %}{{ search_corrected }}{% else %}{{ search_query }}{% endif %}</span>»{% elif search_mode == 'list' %}en {{ search_tab_label|lower }}{% endif %}
+                {% if search_corrected and search_total %}<span class="search-corrected">No encontramos «{{ search_query }}»: mostramos lo más parecido.</span>{% endif %}
             </p>
             {% if search_mode == 'list' and search_has_query and search_total > 1 %}
                 <label class="sf sf-sort">
@@ -182,6 +183,7 @@
             <div>
                 {% if search_query %}
                     <h2>Sin resultados para «{{ search_query }}»</h2>
+                    {% if search_corrected %}<p class="search-didyoumean">¿Quisiste decir <a href="{{ search_corrected_url }}">{{ search_corrected }}</a>? No hay coincidencias en esta categoría.</p>{% endif %}
                     <p>Revisa la ortografía, usa solo parte del nombre o prueba en otra categoría.
                         {% if search_active_filters %}Hay filtros activos que pueden estar limitando la búsqueda.{% endif %}</p>
                 {% elif search_active_filters %}

@@ -667,6 +667,11 @@ dialog::backdrop {
     width: fit-content;
 }
 
+.plot-season-list .state-chip {
+    justify-self: start;
+    font-size: .66rem;
+}
+
 .detail-empty-state {
     display: grid;
     justify-items: start;
